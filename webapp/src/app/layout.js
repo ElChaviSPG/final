@@ -1,28 +1,31 @@
-import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import TemplateShell from "@/components/TemplateShell";
 
 export const metadata = {
-  title: "USPG — Plataforma modular",
-  description: "Proyecto integrador — acceso a los módulos por área.",
+  title: "Ecosistema USPG",
+  description: "Plataforma modular integrada — USPG",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html
-      lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="es" dir="ltr">
+      <head>
+        <meta charSet="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+        <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css" />
+        <link rel="stylesheet" href="/assets/css/style.min.css" />
+      </head>
+      <body className="font-muli theme-blush">
+        <div id="main_content">
+          <TemplateShell>
+            {children}
+          </TemplateShell>
+        </div>
+
+        <Script src="/assets/bundles/lib.vendor.bundle.js" strategy="beforeInteractive" />
+        <Script src="/assets/js/core.js" strategy="lazyOnload" />
+      </body>
     </html>
   );
 }

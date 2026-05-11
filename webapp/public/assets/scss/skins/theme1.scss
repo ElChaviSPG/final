@@ -1,0 +1,1042 @@
+﻿// Theme Color 1
+.theme-azure{
+    #header_top{
+        background: $azure;
+        .brand-logo {
+            color: $azure;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $azure, $indigo);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $azure;
+    }
+    .btn-primary{
+        background: $azure;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $azure;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $azure, $indigo);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $azure, $indigo);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $azure, $indigo);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $azure, $indigo);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $azure, $indigo);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $azure;
+            }
+        }
+    }
+    .chip {
+        color: $azure;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $indigo;
+            }
+        }
+        .active{
+            > a{
+                color: $indigo;
+                border-color: $indigo;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $indigo;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $indigo;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $azure;
+        }
+    }
+}
+
+// Theme Color 2
+.theme-indigo{
+    #header_top{
+        background: $indigo;
+        .brand-logo {
+            color: $indigo;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $indigo2, $indigo);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $indigo;
+    }
+    .btn-primary{
+        background: $indigo;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $indigo;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $indigo2, $indigo);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $indigo2, $indigo);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $indigo2, $indigo);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $indigo2, $indigo);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $indigo2, $indigo);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $indigo;
+            }
+        }
+    }
+    .chip {
+        color: $indigo;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $indigo2;
+            }
+        }
+        .active{
+            > a{
+                color: $indigo2;
+                border-color: $indigo2;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $indigo2;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $indigo2;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $indigo;
+        }
+    }
+}
+
+// Theme Color 3
+.theme-purple{
+    #header_top{
+        background: $purple;
+        .brand-logo {
+            color: $purple;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $blush, $purple);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $purple;
+    }
+    .btn-primary{
+        background: $purple;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $purple;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $blush, $purple);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $blush, $purple);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $blush, $purple);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $blush, $purple);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $blush, $purple);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $purple;
+            }
+        }
+    }
+    .chip {
+        color: $purple;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $blush;
+            }
+        }
+        .active{
+            > a{
+                color: $blush;
+                border-color: $blush;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $blush;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $blush;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $purple;
+        }
+    }
+}
+
+// Theme Color 4
+.theme-orange{
+    #header_top{
+        background: $orange;
+        .brand-logo {
+            color: $orange;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $indigo2, $orange);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $orange;
+    }
+    .btn-primary{
+        background: $orange;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $orange;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $indigo2, $orange);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $indigo2, $orange);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $indigo2, $orange);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $indigo2, $orange);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $indigo2, $orange);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $orange;
+            }
+        }
+    }
+    .chip {
+        color: $orange;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $indigo2;
+            }
+        }
+        .active{
+            > a{
+                color: $indigo2;
+                border-color: $indigo2;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $indigo2;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $indigo2;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $orange;
+        }
+    }
+}
+
+// Theme Color 5
+.theme-green{
+    #header_top{
+        background: $green;
+        .brand-logo {
+            color: $green;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $teal, $green);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $green;
+    }
+    .btn-primary{
+        background: $green;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $green;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $teal, $green);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $teal, $green);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $teal, $green);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $teal, $green);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $teal, $green);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $green;
+            }
+        }
+    }
+    .chip {
+        color: $green;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $teal;
+            }
+        }
+        .active{
+            > a{
+                color: $teal;
+                border-color: $teal;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $teal;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $teal;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $green;
+        }
+    }
+}
+
+// Theme Color 6
+.theme-cyan{
+    #header_top{
+        background: $cyan;
+        .brand-logo {
+            color: $cyan;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $teal, $cyan);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $cyan;
+    }
+    .btn-primary{
+        background: $cyan;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $cyan;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $teal, $cyan);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $teal, $cyan);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $teal, $cyan);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $teal, $cyan);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $teal, $cyan);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $cyan;
+            }
+        }
+    }
+    .chip {
+        color: $cyan;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $teal;
+            }
+        }
+        .active{
+            > a{
+                color: $teal;
+                border-color: $teal;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $teal;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $teal;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $cyan;
+        }
+    }
+}
+
+// Theme Color 7
+.theme-blush{
+    #header_top{
+        background: $blush;
+        .brand-logo {
+            color: $blush;
+        }
+        &.dark{
+            background: $black2 !important;
+            .brand-logo{
+                background: $dark-line;
+            }
+            .nav-link{
+                color: $gray-400 !important;
+            }
+        }
+    }
+    #left-sidebar {
+        .brand-name {
+            background: linear-gradient(145deg, $blue, $blush);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+        }
+    }
+    .card-title{
+        color: $blush;
+    }
+    .btn-primary{
+        background: $blush;
+        border: 0;
+    }
+    &.offcanvas-active{
+        #header_top{
+            background: $blush;
+        }
+        &.gradient{
+            #header_top{
+                background: linear-gradient(145deg, $blue, $blush);
+            }   
+        }
+    }
+    &.gradient{
+        #header_top{
+            background: transparent;
+            @include max-screen($break-large){
+                background: linear-gradient(145deg, $blue, $blush);
+            }
+            &.dark{
+                background: $black2 !important;
+                .brand-logo{
+                    background: $dark-line;
+                }
+                .nav-link{
+                    color: $gray-400 !important;
+                }
+            }
+        }
+        #left-sidebar{
+            background: linear-gradient(145deg, $blue, $blush);
+            .brand-name{
+                color: $white;
+                background: transparent;
+                -webkit-text-fill-color: inherit;
+            }
+            .nav-tabs{
+                border-bottom: 1px solid rgba($white, 0.3);
+                .nav-link{
+                    color: rgba($white, 0.5);
+                    &.active{
+                        border-color: $white;
+                        color: $white;
+                    }
+                }
+            }
+            .metismenu{
+                .g_heading{
+                    color: rgba($white, 0.5);
+                }
+                a{
+                    color: rgba($white, 0.9);
+                }
+                .active>a,
+                a:hover{
+                    color: $white;
+                }
+            }
+        }
+        .btn-primary{
+            background: linear-gradient(145deg, $blue, $blush);
+        }
+    }
+    .user_div {
+        .gradient {
+            background: linear-gradient(145deg, $blue, $blush);
+            color: $white;
+
+            .card-footer {
+                border-top-color: $white;
+            }
+        }
+    }
+    .page-breadcrumb {
+        .breadcrumb-item {
+            a {
+                color: $blush;
+            }
+        }
+    }
+    .chip {
+        color: $blush;
+    }
+    .metismenu {
+        a {    
+            &:hover{
+                color: $blue;
+            }
+        }
+        .active{
+            > a{
+                color: $blue;
+                border-color: $blue;
+            }
+            ul{
+                .active{
+                    a{
+                        color: $blue;
+                        background: transparent;
+                    }
+                }
+            }
+        }
+        &:not(.grid) {
+            .active {
+                > a {
+                    i {
+                        background: $blue;
+                    }
+                }
+            }
+        }
+    }
+    .font_setting {
+        input.custom-control-input:checked ~ .custom-control-label {
+            background: $blush;
+        }
+    }
+}

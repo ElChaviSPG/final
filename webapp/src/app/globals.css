@@ -1,26 +1,265 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ── Colores institucionales USPG ── */
+
+/* Ocultar header_top por si el JS del template lo genera */
+#header_top {
+  display: none !important;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* Sidebar pegado al borde izquierdo sin offset del header_top */
+#left-sidebar {
+  left: 0 !important;
+  padding-left: 0 !important;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* Quitar el padding-left extra que el template aplica a los items */
+#left-sidebar .sidebar-nav,
+#left-sidebar .nav-tabs,
+#left-sidebar .tab-content,
+#left-sidebar .brand-name {
+  padding-left: 15px !important;
+  padding-right: 15px !important;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Contenido principal ajustado al sidebar sin header_top */
+.page {
+  left: 280px !important;
+  width: calc(100% - 280px) !important;
+}
+
+/* Blanco para enlaces activos del sidebar (SOLO EN DARK MODE) */
+.dark-mode #left-sidebar .sidebar-nav .metismenu li.active > a,
+.dark-mode #left-sidebar .sidebar-nav .metismenu li.active > a span,
+.dark-mode #left-sidebar .sidebar-nav .metismenu li.active > a i,
+.dark-mode #left-sidebar .nav-tabs .nav-link.active {
+  color: #ffffff !important;
+}
+
+/* Color oscuro para enlaces activos del sidebar (MODO CLARO) */
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li.active > a,
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li.active > a span,
+body:not(.dark-mode) #left-sidebar .nav-tabs .nav-link.active {
+  color: #333333 !important;
+  transition: none !important;
+}
+
+/* El icono SIEMPRE debe ser blanco sobre el fondo Corinto */
+#left-sidebar .sidebar-nav .metismenu li.active > a i,
+.sidebar-nav .metismenu li.active > a i {
+  color: #ffffff !important;
+  background-color: #800020 !important;
+  transition: none !important;
+  -webkit-transition: none !important;
+}
+
+/* Evitar que herede el color oscuro del texto en modo claro */
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li.active > a i {
+  color: #ffffff !important;
+}
+
+/* Barra indicadora activa en blanco (Dark) o Corinto (Light) */
+.dark-mode #left-sidebar .sidebar-nav .metismenu li.active > a::after {
+  background-color: #ffffff !important;
+}
+
+/* Hover en blanco (Dark) o Gris Oscuro (Light) */
+.dark-mode #left-sidebar .sidebar-nav .metismenu li > a:hover,
+.dark-mode #left-sidebar .sidebar-nav .metismenu li > a:hover span,
+.dark-mode #left-sidebar .sidebar-nav .metismenu li > a:hover i {
+  color: #ffffff !important;
+}
+
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li > a:hover,
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li > a:hover span,
+body:not(.dark-mode) #left-sidebar .sidebar-nav .metismenu li > a:hover i {
+  color: #1a1a2e !important;
+}
+
+/* ── Cambio de Azul a Corinto en Sidebar ── */
+
+/* Barra inferior de la pestaña "Módulos" */
+#left-sidebar .nav-tabs .nav-link.active {
+  border-bottom-color: #800020 !important;
+}
+
+/* Barra vertical al lado del item activo (derecha o izquierda) */
+#left-sidebar .sidebar-nav .metismenu li.active > a::after,
+#left-sidebar .sidebar-nav .metismenu li.active > a::before,
+.metismenu li.active > a::after,
+.metismenu li.active > a::before {
+  background-color: #800020 !important;
+  background: #800020 !important;
+  border-color: #800020 !important;
+}
+
+/* Forzar color en cualquier borde o elemento que use el color de tema por defecto */
+.sidebar-nav .metismenu li.active a {
+  border-color: #800020 !important;
+}
+
+/* Fondo de los iconos en el sidebar (si el template usa .icon) */
+#left-sidebar .sidebar-nav .metismenu li.active > a i,
+#left-sidebar .sidebar-nav .metismenu li.active > a .icon {
+  background-color: #800020 !important;
+  color: #ffffff !important;
+}
+
+/* ── Dashboard Cards Modernas ── */
+.dashboard-card {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  border-radius: 12px !important;
+  transition: all 0.3s ease !important;
+  overflow: hidden;
+  height: 100%;
+}
+
+.dashboard-card:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  transform: translateY(-5px);
+  border-color: rgba(255, 255, 255, 0.15) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dashboard-card .card-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2rem 1.5rem !important;
+}
+
+.dashboard-card .icon-wrapper {
+  width: 60px;
+  height: 60px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover .icon-wrapper {
+  background: #ffffff;
+}
+
+.dashboard-card .icon-wrapper i {
+  color: #ffffff !important;
+  font-size: 24px;
+  transition: all 0.3s ease;
+}
+
+.dashboard-card:hover .icon-wrapper i {
+  color: #1a1a2e !important;
+}
+
+.dashboard-card .module-title {
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 1.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.dashboard-card .module-subtitle {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+/* ── Ajustes para Modo Claro (cuando no hay .dark-mode) ── */
+body:not(.dark-mode) .dashboard-card {
+  background: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+}
+
+body:not(.dark-mode) .dashboard-card:hover {
+  background: #ffffff !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1) !important;
+}
+
+body:not(.dark-mode) .dashboard-card .icon-wrapper {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+body:not(.dark-mode) .dashboard-card .icon-wrapper i {
+  color: #333333 !important;
+}
+
+body:not(.dark-mode) .dashboard-card:hover .icon-wrapper {
+  background: #1a1a2e; /* Fondo oscuro al hover en modo claro */
+}
+
+body:not(.dark-mode) .dashboard-card:hover .icon-wrapper i {
+  color: #ffffff !important;
+}
+
+body:not(.dark-mode) .dashboard-card .module-title {
+  color: #333333;
+}
+
+body:not(.dark-mode) .dashboard-card .module-subtitle {
+  color: #888888;
+}
+
+body:not(.dark-mode) #left-sidebar .brand-name {
+  background: #f4f7f6 !important;
+}
+
+/* ── Títulos de Tarjetas Institucionales (Para páginas internas) ── */
+.card-title, 
+.card-header h3, 
+.card-header h5,
+.card-body h5 {
+  color: #800020 !important;
+  font-weight: bold !important;
+}
+
+/* ── Títulos específicos del Dashboard (Grid principal) ── */
+/* En modo oscuro, usamos gris claro para mejor contraste */
+.dark-mode .dashboard-card h5,
+.dark-mode .dashboard-card .module-title {
+  color: #e0e0e0 !important;
+  font-weight: bold !important;
+}
+
+/* Al pasar el mouse en el dashboard, podemos resaltar en blanco o mantener el gris */
+.dark-mode .dashboard-card:hover h5,
+.dark-mode .dashboard-card:hover .module-title {
+  color: #ffffff !important;
+}
+
+/* En modo claro del Dashboard, mantenemos el texto oscuro para legibilidad */
+body:not(.dark-mode) .dashboard-card h5,
+body:not(.dark-mode) .dashboard-card .module-title {
+  color: #333333 !important;
+}
+
+/* En modo oscuro, si el corinto es muy oscuro, podemos ajustarlo para cabeceras internas */
+.dark-mode .card-title, 
+.dark-mode .card-header h3, 
+.dark-mode .card-header h5 {
+  color: #a30029 !important;
+}
+
+/* ── Login Container Reset ── */
+.login-container {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 10000 !important;
+  background: white !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  color: #333 !important; /* Forzar texto oscuro */
+}
+
+.login-container * {
+  box-sizing: border-box;
 }

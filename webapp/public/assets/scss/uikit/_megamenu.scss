@@ -1,0 +1,204 @@
+﻿.right_sidebar{
+    @include box-shadow(-2px 2px 5px rgba($dark, 0.1));
+    @include transition(all 0.4s ease-in-out);
+    background: $white;
+    width: 300px;
+    height: 100vh;
+    position: fixed;
+    right: -350px;
+    top: 0px;    
+    z-index: 9999 !important;
+    overflow-y: scroll;
+    scrollbar-width: none; // Firefox /
+    -ms-overflow-style: none;  // IE 10+ /
+
+    &::-webkit-scrollbar { // WebKit /
+        width: 0px;
+    }
+
+    @include max-screen($break-small - 1px){
+        padding-bottom: 40px;
+    }
+
+    &.open {
+        right: 0;
+    }
+    .settingbar{
+        position: absolute;
+        right: 0;
+    }
+    .nav-tabs{
+        margin: 0;
+        + .tab-content {
+            padding: 20px;
+        }
+    }
+    .card{
+        .card-header{
+            @extend .pb-0;
+        }
+        ul{
+            @extend .mb-0;
+        }
+    }
+}
+.setting-list{
+    li{
+        @extend .mb-10;
+        &:last-child{
+            @extend .mb-0;
+        }
+    }
+}
+.choose-skin,
+.sidebar-skin {
+    display: flex;
+    align-items: center;
+    flex-flow: row wrap;
+    grid-gap: 5px;
+
+    li {
+        @include transition(all .3s ease-in-out);
+        @include inline-block();
+        position: relative;
+        cursor: pointer;
+        font-size: 0;
+        
+        &.active,
+        &:hover{
+            &:after {
+                position: absolute;
+                content: "";
+                background: $white;
+                width: 20px;
+                height: 20px;
+                top: 5px;
+                left: 5px;
+                border-radius: 3px;
+            }
+        }
+
+        div {
+            @include border-radius(2px);
+            @include inline-block();
+            width: 30px;
+            height: 30px;
+            border-radius: 4px;
+			&.azure{
+				background: $azure;
+			}
+			&.indigo{
+				background: $indigo;
+			}
+			&.purple{
+				background: $purple;
+			}
+			&.orange{
+				background: $orange;
+            }
+            &.green{
+				background: $green;
+            }
+            &.cyan{
+				background: $cyan;
+            }
+            &.blush{
+				background: $blush;
+			}
+        }
+    }
+}
+
+.font_setting {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-gap: 10px;
+
+    .custom-control {
+        margin: 0 !important;
+        padding: 0 !important;
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        cursor: pointer;
+
+        .custom-control-label {
+            padding: 10px;
+            display: inline-block;
+            vertical-align: top;
+            width: 100%;
+            border: 1px solid #E6E9ED;
+            border-radius: 5px;
+
+            &:before, 
+            &:after {
+                content: none;
+            }
+        }
+    }
+}
+
+
+input.custom-control-input:checked ~ .custom-control-label {
+    color: #fff;
+}
+
+.contact-list{
+    li{
+        @extend .mb-25;
+
+        .contact-img{
+            @extend .mr-15;
+            img{
+                width: 30px;
+            }
+        }
+        .contact-name{
+            @extend .font-15;
+            @extend .mb-0;
+
+            span{
+                @extend .font-12;
+                font-weight: $font-weight-400;
+            }
+        }
+        .action{
+            margin-left: auto; 
+        }
+    }
+}
+.theme_div{
+
+    @include box-shadow(-2px 2px 5px rgba($dark, 0.1));
+    @include transition(all 0.3s ease-in-out);
+    background: $white;
+    width: 278px;
+    height: 100vh;
+    position: fixed;
+    right: -280px;    
+    top: 0px;    
+    z-index: 9999 !important;
+
+    overflow-x: auto;
+    scrollbar-width: none; // Firefox /
+    -ms-overflow-style: none;  // IE 10+ /
+
+    &::-webkit-scrollbar { // WebKit /
+        width: 0px;
+    }
+
+    &.open {
+        right: 0;
+    }
+    .card{
+        border: 0;
+        .list-group{
+            a{
+                display: block;
+                img{
+                    border: 1px solid $gray-100; 
+                }
+            }
+        }
+    }
+}
