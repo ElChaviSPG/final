@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RolUsuario {
+  ADMINISTRADOR
+  TECNICO
+  CATEDRATICO
+  ESTUDIANTE
+}
+
+enum EstadoLaboratorio {
+  ACTIVO
+  INACTIVO
+  MANTENIMIENTO
+}
+
+enum EstadoReserva {
+  PENDIENTE
+  APROBADA
+  RECHAZADA
+  COMPLETADA
+  CANCELADA
+}
+
+model Usuario {
+  id             String     @id @default(uuid())
+  correo         String     @unique
+  nombre         String
+  rol            RolUsuario @default(ESTUDIANTE)
+  reglamentoAcep Boolean    @default(false) @map("reglamento_acep")
+  sancionado     Boolean    @default(false)
+
+  reservas        Reserva[]
+  sesionesUso     SesionUso[]
+  pagosEventuales Pago[]
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+
+  @@map("usuario")
+}
+
+model Laboratorio {
+  id              Int               @id @default(autoincrement())
+  nombre          String
+  descripcion     String?
+  capacidadTotal  Int               @default(30) @map("capacidad_total")
+  permiteDivision Boolean           @default(false) @map("permite_division")
+  estado          EstadoLaboratorio @default(ACTIVO)
+
+  equipos   Equipo[]
+  reservas  Reserva[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("laboratorio")
+}
+
+model Equipo {
+  id               Int     @id @default(autoincrement())
+  laboratorioId    Int     @map("laboratorio_id")
+  codigoInventario String  @unique @map("codigo_inventario")
+  nombre           String
+  esServidor       Boolean @default(false) @map("es_servidor")
+  estado           String  @default("OPERATIVO")
+
+  laboratorio  Laboratorio   @relation(fields: [laboratorioId], references: [id])
+  sesionesUso  SesionUso[]
+  reportesDano ReporteDano[]
+
+  @@map("equipo")
+}
+
+model Reserva {
+  id               String        @id @default(uuid())
+  usuarioId        String        @map("usuario_id")
+  laboratorioId    Int           @map("laboratorio_id")
+  fechaInicio      DateTime      @map("fecha_inicio")
+  fechaFin         DateTime      @map("fecha_fin")
+  cantidadPersonas Int           @map("cantidad_personas")
+  estado           EstadoReserva @default(PENDIENTE)
+  aprobadaPorId    String?       @map("aprobada_por_id")
+  notas            String?
+
+  usuario     Usuario     @relation(fields: [usuarioId], references: [id])
+  laboratorio Laboratorio @relation(fields: [laboratorioId], references: [id])
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@map("reserva")
+}
+
+model SesionUso {
+  id                String    @id @default(uuid())
+  usuarioId         String    @map("usuario_id")
+  equipoId          Int       @map("equipo_id")
+  tipoConexion      String    @map("tipo_conexion")
+  inicio            DateTime  @default(now())
+  fin               DateTime?
+  registroActividad Json?     @map("registro_actividad")
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id])
+  equipo  Equipo  @relation(fields: [equipoId], references: [id])
+
+  @@map("sesion_uso")
+}
+
+model Pago {
+  id         String  @id @default(uuid())
+  usuarioId  String  @map("usuario_id")
+  monto      Decimal
+  tipoCobro  String  @map("tipo_cobro")
+  metodoPago String  @map("metodo_pago")
+  estado     String
+
+  usuario   Usuario  @relation(fields: [usuarioId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("pago")
+}
+
+model ReporteDano {
+  id             Int     @id @default(autoincrement())
+  equipoId       Int     @map("equipo_id")
+  reportadoPorId String  @map("reportado_por_id")
+  descripcion    String
+  requiereCobro  Boolean @default(false) @map("requiere_cobro")
+
+  equipo    Equipo   @relation(fields: [equipoId], references: [id])
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("reporte_dano")
+}
