@@ -15,8 +15,11 @@ export default function RootLayout({ children }) {
         <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
         <link rel="stylesheet" href="/assets/plugins/bootstrap/css/bootstrap.min.css" />
         <link rel="stylesheet" href="/assets/css/style.min.css" />
+        <Script id="uspg-theme-init" strategy="beforeInteractive">
+          {`(function(){try{var t=localStorage.getItem('uspg-theme');if(t==='light'){document.documentElement.classList.add('uspg-theme-pending');document.body.classList.remove('dark-mode');}}catch(e){}})();`}
+        </Script>
       </head>
-      <body className="font-muli theme-blush">
+      <body className="font-muli theme-blush dark-mode" suppressHydrationWarning>
         <div id="main_content">
           <TemplateShell>
             {children}

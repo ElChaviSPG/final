@@ -3,7 +3,14 @@
 import { useState } from 'react'
 import { crearLaboratorio } from '../actions'
 
-export default function NuevoLaboratorioModal({ onClose }) {
+const TIPOS = [
+  { value: 'COMPUTACION', label: 'Computación' },
+  { value: 'PLC_CNC', label: 'PLC / CNC' },
+  { value: 'QUIMICA', label: 'Química' },
+  { value: 'FISICA', label: 'Física' },
+]
+
+export default function NuevoLaboratorioModal({ onClose = () => {} }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -11,104 +18,88 @@ export default function NuevoLaboratorioModal({ onClose }) {
     setLoading(true)
     setError('')
     const result = await crearLaboratorio(formData)
-    
     if (result?.success) {
-      onClose()
+      onClose('Laboratorio creado correctamente.', 'success')
     } else {
-      setError(result?.error || 'Ocurrió un error inesperado.')
+      setError(result?.error || 'Error inesperado')
       setLoading(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="dashboard-card w-full max-w-lg bg-[#1a1a2e] border border-gray-800 shadow-2xl rounded-xl p-6 relative">
-        
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors"
-        >
-          <i className="fa fa-times text-xl"></i>
-        </button>
-
-        <h3 className="text-2xl font-semibold mb-6 text-white flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-[#800020] flex items-center justify-center">
-            <i className="fa fa-plus text-sm"></i>
-          </div>
-          Nuevo Laboratorio
-        </h3>
+    <div className="lab-modal-overlay" onClick={onClose}>
+      <div className="lab-modal" onClick={(e) => e.stopPropagation()}>
+        <div className="flex justify-between items-center mb-5">
+          <h3 className="text-xl font-semibold m-0 flex items-center gap-2">
+            <span className="w-8 h-8 rounded-full bg-[#800020] text-white flex items-center justify-center">
+              <i className="fa fa-plus text-sm" />
+            </span>
+            Nuevo laboratorio
+          </h3>
+          <button type="button" onClick={onClose} className="lab-btn-ghost py-1 px-2">
+            <i className="fa fa-times" />
+          </button>
+        </div>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/50 rounded-lg text-red-500 text-sm">
+          <div className="mb-4 p-3 rounded-lg text-sm border border-red-500/40 bg-red-500/10 text-red-400">
             {error}
           </div>
         )}
 
         <form action={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Nombre del Laboratorio</label>
-            <input 
-              type="text" 
-              name="nombre" 
-              required 
-              placeholder="Ej. Computación"
-              className="w-full bg-[#0f0f1a] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#800020] transition-colors"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Código</label>
+              <input name="codigo" required placeholder="LAB-COMP" className="lab-input" />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Tipo</label>
+              <select name="tipo" className="lab-input" defaultValue="COMPUTACION">
+                {TIPOS.map((t) => (
+                  <option key={t.value} value={t.value}>{t.label}</option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-300 mb-1">Descripción</label>
-            <textarea 
-              name="descripcion" 
-              rows="3"
-              placeholder="Descripción del propósito del laboratorio..."
-              className="w-full bg-[#0f0f1a] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#800020] transition-colors"
-            ></textarea>
+            <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Nombre</label>
+            <input name="nombre" required placeholder="Laboratorio de Computación" className="lab-input" />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Ubicación</label>
+            <input name="ubicacion" placeholder="Edificio Ingeniería — Planta 2" className="lab-input" />
+          </div>
+
+          <div>
+            <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Descripción</label>
+            <textarea name="descripcion" rows={3} className="lab-input" placeholder="Propósito del laboratorio..." />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-sm font-medium text-gray-300 mb-1">Capacidad Total</label>
-              <input 
-                type="number" 
-                name="capacidadTotal" 
-                defaultValue="30"
-                min="1"
-                required
-                className="w-full bg-[#0f0f1a] border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-[#800020] transition-colors"
-              />
+              <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Capacidad</label>
+              <input type="number" name="capacidadTotal" defaultValue={30} min={1} required className="lab-input" />
             </div>
-            
-            <div className="flex flex-col justify-end pb-2">
-              <label className="flex items-center space-x-3 cursor-pointer group">
-                <div className="relative">
-                  <input type="checkbox" name="permiteDivision" className="sr-only peer" />
-                  <div className="w-10 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#800020]"></div>
-                </div>
-                <span className="text-sm font-medium text-gray-300 group-hover:text-white transition-colors">Permite División</span>
-              </label>
+            <div>
+              <label className="block text-xs uppercase tracking-wide opacity-70 mb-1">Fase</label>
+              <input type="number" name="faseImplementacion" defaultValue={1} min={1} max={4} className="lab-input" />
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
-            <button 
-              type="button" 
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-gray-800 transition-colors"
-              disabled={loading}
-            >
+          <label className="flex items-center gap-2 cursor-pointer text-sm">
+            <input type="checkbox" name="permiteDivision" defaultChecked className="rounded" />
+            Permite divisiones parciales
+          </label>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button type="button" onClick={onClose} className="lab-btn-ghost" disabled={loading}>
               Cancelar
             </button>
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="bg-[#800020] hover:bg-[#9a0026] text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-lg shadow-[#800020]/20 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {loading ? (
-                <><i className="fa fa-spinner fa-spin"></i> Guardando...</>
-              ) : (
-                <><i className="fa fa-save"></i> Guardar</>
-              )}
+            <button type="submit" className="lab-btn-primary" disabled={loading}>
+              {loading ? <><i className="fa fa-spinner fa-spin" /> Guardando...</> : <><i className="fa fa-save" /> Guardar</>}
             </button>
           </div>
         </form>
