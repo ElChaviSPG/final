@@ -133,7 +133,7 @@ function AssignModal({ space, onClose, onSubmit }) {
   const [found,     setFound]     = useState(null);
   // registro rápido de visitante
   const [showRegister, setShowRegister] = useState(false);
-  const [regForm, setRegForm] = useState({ first_name: "", last_name: "", brand: "", model: "", color: "" });
+  const [regForm, setRegForm] = useState({ first_name: "", last_name: "", phone: "", brand: "", model: "", color: "" });
   const [registering, setRegistering] = useState(false);
 
   const searchVehicle = async () => {
@@ -155,15 +155,31 @@ function AssignModal({ space, onClose, onSubmit }) {
     }
     setRegistering(true); setMsg("");
     try {
-      const res = await api.post("/vehicles", {
-        placa:  plate.toUpperCase(),
-        brand:  regForm.brand  || "No especificado",
-        model:  regForm.model  || "No especificado",
-        color:  regForm.color  || "No especificado",
-        owner_carnet: null,
+      // 1. Crear usuario visitante
+      const placaClean = plate.toUpperCase().replace(/\s/g, "");
+      const userRes = await api.post("/users", {
+        first_name:    regForm.first_name.trim(),
+        last_name:     regForm.last_name.trim() || "Visitante",
+        email:         `visitante-${placaClean.toLowerCase()}@uspg.local`,
+        password:      crypto.randomUUID(),
+        role:          "VISITOR",
+        phone:         regForm.phone?.trim() || null,
+        is_active:     true,
       });
-      const v = res.data.data;
-      setFound(v); setVehicleId(v.id);
+      const userId = userRes.data.data?.id;
+      if (!userId) throw new Error("No se pudo crear el usuario visitante.");
+
+      // 2. Registrar vehículo ligado al nuevo usuario visitante
+      const vRes = await api.post("/vehicles", {
+        placa:   placaClean,
+        brand:   regForm.brand  || "No especificado",
+        model:   regForm.model  || "No especificado",
+        color:   regForm.color  || "No especificado",
+        user_id: userId,
+      });
+      const v = vRes.data.data;
+      setFound({ ...v, user: userRes.data.data });
+      setVehicleId(v.id);
       setShowRegister(false);
       setMsg("");
     } catch (e) {
@@ -217,13 +233,18 @@ function AssignModal({ space, onClose, onSubmit }) {
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <i className="fa fa-check-circle" style={{ color: "#21ba45" }} />
                   <strong style={{ color: "#800020" }}>{found.placa}</strong>
-                  {found.visitor && <span className="badge badge-warning" style={{ fontSize: 10 }}>Visitante</span>}
+                  {found.user?.role === "VISITOR" && (
+                    <span className="badge badge-warning" style={{ fontSize: 10 }}>Visitante</span>
+                  )}
                 </div>
                 <div style={{ fontSize: 12, color: "#7d8490" }}>
                   {[found.brand, found.model, found.color, found.year].filter(Boolean).join(" · ")}
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Propietario: <strong>{found.user ? `${found.user.first_name} ${found.user.last_name}` : (found.visitor_name || "—")}</strong>
+                  Propietario: <strong>{found.user ? `${found.user.first_name} ${found.user.last_name}` : "—"}</strong>
+                  {found.user?.role === "VISITOR" && (
+                    <span style={{ color: "#7d8490", marginLeft: 6 }}>(Visitante registrado)</span>
+                  )}
                 </div>
                 {found.blacklisted && (
                   <div style={{ color: "#db2828", fontWeight: 700, marginTop: 4, fontSize: 12 }}>
@@ -252,6 +273,12 @@ function AssignModal({ space, onClose, onSubmit }) {
                     <input className="form-control form-control-sm" placeholder="Pérez"
                       value={regForm.last_name}
                       onChange={e => setRegForm(f => ({ ...f, last_name: e.target.value }))} />
+                  </div>
+                  <div className="col-12 form-group" style={{ marginBottom: 8 }}>
+                    <label style={{ fontSize: 12 }}>Teléfono <span style={{ color: "#aaa" }}>(opcional)</span></label>
+                    <input className="form-control form-control-sm" placeholder="5555-0000"
+                      value={regForm.phone}
+                      onChange={e => setRegForm(f => ({ ...f, phone: e.target.value }))} />
                   </div>
                   <div className="col-4 form-group" style={{ marginBottom: 8 }}>
                     <label style={{ fontSize: 12 }}>Marca</label>
