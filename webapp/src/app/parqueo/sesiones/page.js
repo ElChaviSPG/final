@@ -109,7 +109,6 @@ function SalidaModal({ session, onClose, onDone }) {
 
   if (!session) return null;
   const minutes = Math.floor((Date.now() - new Date(session.entry_time).getTime()) / 60000);
-  const total   = ((minutes / 60) * 5).toFixed(2);
 
   const confirmar = async () => {
     setLoading(true);
@@ -155,7 +154,7 @@ function SalidaModal({ session, onClose, onDone }) {
                 <tr><td style={{ color: "#7d8490", width: 130 }}>Tiempo</td>
                   <td><strong>{minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`}</strong></td></tr>
                 <tr><td style={{ color: "#7d8490" }}>Monto a cobrar</td>
-                  <td><strong style={{ color: "#21ba45", fontSize: 15 }}>Q {total}</strong></td></tr>
+                  <td><strong style={{ color: "#21ba45", fontSize: 15 }}>Según tarifa de rol</strong></td></tr>
                 <tr><td style={{ color: "#7d8490" }}>Estado pago</td>
                   <td><PagoBadge paid={session.is_paid} /></td></tr>
               </tbody>
