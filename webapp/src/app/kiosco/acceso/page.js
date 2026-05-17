@@ -167,11 +167,26 @@ function CardScreen({ amountDue, onConfirm, onBack, loading, error }) {
 
   const numDigits = num.replace(/\D/g,"");
   const expDigits = exp.replace(/\D/g,"");
-  const complete  = numDigits.length === 16 && expDigits.length === 4 && cvv.length >= 3 && name.trim().length >= 2;
+
+  // Validar fecha: mes 01-12, año >= año actual (2 dígitos)
+  const now       = new Date();
+  const curYear2  = now.getFullYear() % 100;  // ej. 26
+  const curMonth  = now.getMonth() + 1;        // 1-12
+  const expValid  = (() => {
+    if (expDigits.length < 4) return false;
+    const mm = parseInt(expDigits.slice(0,2), 10);
+    const yy = parseInt(expDigits.slice(2,4), 10);
+    if (mm < 1 || mm > 12) return false;
+    if (yy < curYear2) return false;
+    if (yy === curYear2 && mm < curMonth) return false;
+    return true;
+  })();
+
+  const complete  = numDigits.length === 16 && expValid && cvv.length >= 3 && name.trim().length >= 2;
 
   const progress = [
     numDigits.length === 16,
-    expDigits.length === 4,
+    expValid,
     cvv.length >= 3,
     name.trim().length >= 2,
   ];
@@ -209,8 +224,29 @@ function CardScreen({ amountDue, onConfirm, onBack, loading, error }) {
       else if (d.length < 16) { const nd = d+k; setNum(formatNum(nd)); if (nd.length===16) setField("exp"); }
     } else if (field === "exp") {
       const d = exp.replace(/\D/g,"");
-      if (k === "⌫") setExp(formatExp(d.slice(0,-1)));
-      else if (d.length < 4) { const nd = d+k; setExp(formatExp(nd)); if (nd.length===4) setField("cvv"); }
+      if (k === "⌫") { setExp(formatExp(d.slice(0,-1))); return; }
+      if (d.length >= 4) return;
+      const nd = d + k;
+      // Validar mes: primer dígito solo 0 o 1; segundo dígito según el primero
+      if (nd.length === 1) {
+        if (parseInt(k) > 1) { setExp(formatExp("0" + k)); return; } // 2-9 → 02-09 auto
+      }
+      if (nd.length === 2) {
+        const mm = parseInt(nd, 10);
+        if (mm < 1 || mm > 12) return; // bloquea 00 y 13-19
+      }
+      // Validar año: no puede ser menor al año actual
+      if (nd.length === 4) {
+        const yy = parseInt(nd.slice(2,4), 10);
+        if (yy < curYear2) return; // año pasado → bloquea
+      }
+      setExp(formatExp(nd));
+      if (nd.length === 4) {
+        // Verificar que no sea mes vencido
+        const mm = parseInt(nd.slice(0,2), 10);
+        const yy = parseInt(nd.slice(2,4), 10);
+        if (yy > curYear2 || (yy === curYear2 && mm >= curMonth)) setField("cvv");
+      }
     } else if (field === "cvv") {
       if (k === "⌫") setCvv(c => c.slice(0,-1));
       else if (cvv.length < 4) { const nc = cvv+k; setCvv(nc); if (nc.length>=3) setField("name"); }
@@ -286,6 +322,14 @@ function CardScreen({ amountDue, onConfirm, onBack, loading, error }) {
         />
       ) : (
         <NumPad onPress={pressKey} />
+      )}
+
+      {/* Error de fecha vencida */}
+      {field === "exp" && expDigits.length === 4 && !expValid && (
+        <div style={{ color:"#ff6b6b", fontSize:12, marginTop:8, textAlign:"center" }}>
+          <i className="fas fa-exclamation-circle" style={{ marginRight:6 }} />
+          Fecha inválida o tarjeta vencida
+        </div>
       )}
 
       {error && <div style={{ color:"#ff6b6b", fontSize:13, marginTop:10 }}>{error}</div>}

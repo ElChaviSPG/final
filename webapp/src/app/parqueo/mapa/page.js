@@ -759,24 +759,29 @@ export default function MapaParqueo() {
             </div>
           </div>
 
-          {["A", "B", "C", "D"].map(z => {
-            const zs = zoneStats[z] || {};
-            const pct = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+          {PARQUEOS.map(p => {
+            const zs = zoneStats[p.zone] || {};
+            // Si hay 2 parqueos en la misma zona, dividir estadísticas entre ellos
+            const siblings = PARQUEOS.filter(x => x.zone === p.zone).length;
+            const total     = Math.round((zs.total     || 0) / siblings);
+            const occupied  = Math.round((zs.occupied  || 0) / siblings);
+            const available = Math.round((zs.available || 0) / siblings);
+            const pct  = total ? Math.round((occupied / total) * 100) : 0;
             const color = pct > 85 ? "#db2828" : pct > 60 ? "#fbbd08" : "#21ba45";
             return (
-              <div className="card" key={z} style={{ marginBottom: "0.75rem" }}>
-                <div className="card-body" style={{ padding: "0.85rem 1rem" }}>
+              <div className="card" key={p.id} style={{ marginBottom: "0.6rem" }}>
+                <div className="card-body" style={{ padding: "0.75rem 1rem" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontWeight: 700, fontSize: 15 }}>Zona {z}</span>
+                    <span style={{ fontWeight: 700, fontSize: 14 }}>{p.label}</span>
                     <span style={{ fontSize: 12, color, fontWeight: 600 }}>{pct}%</span>
                   </div>
-                  <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 6, margin: "6px 0", overflow: "hidden" }}>
+                  <div style={{ background: "rgba(255,255,255,0.06)", borderRadius: 4, height: 5, margin: "5px 0", overflow: "hidden" }}>
                     <div style={{ width: `${pct}%`, height: "100%", background: color, borderRadius: 4 }} />
                   </div>
                   <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#7d8490" }}>
-                    <span><span style={{ color: "#21ba45" }}>●</span> {zs.available || 0}</span>
-                    <span><span style={{ color: "#db2828" }}>●</span> {zs.occupied || 0}</span>
-                    <span style={{ color: "#7d8490" }}>{zs.total || 0} total</span>
+                    <span><span style={{ color: "#21ba45" }}>●</span> {available}</span>
+                    <span><span style={{ color: "#db2828" }}>●</span> {occupied}</span>
+                    <span style={{ color: "#7d8490" }}>{total} total</span>
                   </div>
                 </div>
               </div>
