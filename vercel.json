@@ -1,7 +1,6 @@
 {
-  "rootDirectory": "webapp",
-  "buildCommand": "npx prisma generate && next build",
-  "installCommand": "npm install",
-  "outputDirectory": ".next",
+  "buildCommand": "cd webapp && npx prisma generate && npm run build",
+  "installCommand": "cd webapp && npm install",
+  "outputDirectory": "webapp/.next",
   "framework": "nextjs"
 }
