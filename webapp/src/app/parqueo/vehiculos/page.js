@@ -5,6 +5,47 @@ const ROL_ES = { STUDENT:"Estudiante", TEACHER:"Docente", ADMIN:"Administrador",
 const TIPO_VEH_ES = { STANDARD:"Estándar", MOTORCYCLE:"Motocicleta", HANDICAPPED:"Discapacitado", ELECTRIC:"Eléctrico", VIP:"VIP", TEACHER:"Docente" };
 import api from "@/lib/api";
 
+// ── Input de placa con auto-formato ──────────────────────────────────────────
+function PlacaInput({ value, onChange, placeholder = "P-001ABC", className = "form-control form-control-sm" }) {
+  const format = (raw) => {
+    // Quitar todo excepto letras y números, forzar mayúsculas
+    let clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    // Insertar guión si hay más de 1 carácter y no tiene aún
+    if (clean.length > 1 && !raw.includes("-")) {
+      clean = clean[0] + "-" + clean.slice(1);
+    }
+    return clean;
+  };
+
+  const handleChange = (e) => {
+    const formatted = format(e.target.value);
+    onChange(formatted);
+  };
+
+  const isValid = value.length >= 5;
+
+  return (
+    <div style={{ position: "relative" }}>
+      <input
+        className={className}
+        placeholder={placeholder}
+        value={value}
+        onChange={handleChange}
+        maxLength={10}
+        style={{ paddingRight: 32, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}
+      />
+      {value.length > 0 && (
+        <span style={{
+          position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+          fontSize: 13, color: isValid ? "#21ba45" : "#fbbd08",
+        }}>
+          <i className={`fa ${isValid ? "fa-check" : "fa-pencil"}`} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Modal: Agregar vehículo ───────────────────────────────────────────────────
 function AddVehicleModal({ onClose, onDone }) {
   const [form, setForm] = useState({
@@ -52,11 +93,7 @@ function AddVehicleModal({ onClose, onDone }) {
               <div className="col-6">
                 <div className="form-group">
                   <label style={{ fontSize:13, fontWeight:600 }}>Placa *</label>
-                  <input className="form-control form-control-sm"
-                    placeholder="P-001ABC"
-                    value={form.placa}
-                    onChange={e => set("placa", e.target.value.toUpperCase())}
-                  />
+                  <PlacaInput value={form.placa} onChange={v => set("placa", v)} />
                 </div>
               </div>
               <div className="col-6">

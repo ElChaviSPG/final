@@ -124,6 +124,31 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
   );
 }
 
+// ── Input de placa con auto-formato ──────────────────────────────────────────
+function PlacaInput({ value, onChange, placeholder = "P-001ABC", className = "form-control" }) {
+  const format = (raw) => {
+    let clean = raw.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    if (clean.length > 1 && !raw.includes("-")) {
+      clean = clean[0] + "-" + clean.slice(1);
+    }
+    return clean;
+  };
+  const isValid = value.length >= 5;
+  return (
+    <div style={{ position: "relative" }}>
+      <input className={className} placeholder={placeholder} value={value} maxLength={10}
+        onChange={e => onChange(format(e.target.value))}
+        style={{ paddingRight: 32, textTransform: "uppercase", letterSpacing: 1, fontWeight: 600 }}
+      />
+      {value.length > 0 && (
+        <span style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", fontSize: 13, color: isValid ? "#21ba45" : "#fbbd08" }}>
+          <i className={`fa ${isValid ? "fa-check" : "fa-pencil"}`} />
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ── Modal asignación manual ────────────────────────────────────────────────────
 function AssignModal({ space, onClose, onSubmit }) {
   const [plate,     setPlate]     = useState("");
@@ -216,10 +241,11 @@ function AssignModal({ space, onClose, onSubmit }) {
             <div className="form-group">
               <label style={{ fontSize: 13, fontWeight: 600 }}>Buscar por placa</label>
               <div style={{ display: "flex", gap: 6 }}>
-                <input className="form-control" value={plate}
-                  onChange={e => { setPlate(e.target.value.toUpperCase()); setMsg(""); setFound(null); setVehicleId(""); setShowRegister(false); }}
-                  onKeyDown={e => e.key === "Enter" && searchVehicle()}
-                  placeholder="ABC-123" />
+                <div style={{ flex: 1 }}>
+                  <PlacaInput value={plate}
+                    onChange={v => { setPlate(v); setMsg(""); setFound(null); setVehicleId(""); setShowRegister(false); }}
+                  />
+                </div>
                 <button className="btn btn-primary" onClick={searchVehicle}
                   style={{ whiteSpace: "nowrap", fontWeight: 600, minWidth: 80 }}>
                   <i className="fa fa-search" style={{ marginRight: 4 }} />Buscar

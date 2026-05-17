@@ -8,7 +8,6 @@ export async function POST(request, { params }) {
     const user = getUserFromRequest(request);
     const { reason } = await request.json();
     const addedByUserId = user?.sub ?? null;
-    if (!addedByUserId) return res.error('Se requiere autenticación', 401);
 
     const vehicle = await prisma.vehicle.findFirst({ where: { id, deleted_at: null } });
     if (!vehicle) return res.notFound('Vehículo no encontrado');
