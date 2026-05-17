@@ -4,6 +4,14 @@ import api from "@/lib/api";
 import CampusMapPicker from "@/components/parqueo/CampusMapPicker";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+function getParqueoLabel(zone, space_code) {
+  if (!zone || !space_code) return zone ? `Zona ${zone}` : "—";
+  const num = parseInt(space_code.replace(/[^0-9]/g, ""), 10) || 0;
+  if (zone === "A") return num <= 125 ? "Zona A · Norte" : "Zona A · Oeste";
+  if (zone === "B") return num <= 125 ? "Zona B · Sur"  : "Zona B · Este";
+  return `Zona ${zone}`;
+}
+
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleString("es-GT", {
     day:"2-digit", month:"2-digit", year:"numeric",
@@ -384,7 +392,7 @@ function SendQRModal({ reservation, onClose, onSent }) {
                 }}>
                   <div style={{ fontWeight:700, color:"#800020", fontSize:14 }}>{spaceCode}</div>
                   <div style={{ fontSize:12, color:"#7d8490", marginTop:2 }}>
-                    Zona {zone} · {fmtDate(reservation.start_time)} → {fmtDate(reservation.end_time)}
+                    {getParqueoLabel(zone, spaceCode)} · {fmtDate(reservation.start_time)} → {fmtDate(reservation.end_time)}
                   </div>
                   {reservation.event_name && (
                     <div style={{ fontSize:12, color:"#7d8490", marginTop:2 }}>
@@ -471,7 +479,7 @@ function CancelModal({ reservation, onClose, onDone }) {
               <div style={{ fontWeight:700, color:"#800020" }}>
                 {reservation.space?.code || reservation.space_code || "—"}
                 <span style={{ color:"#7d8490", fontWeight:400, marginLeft:8, fontSize:13 }}>
-                  Zona {reservation.space?.zone || reservation.zone}
+                  {getParqueoLabel(reservation.space?.zone || reservation.zone, reservation.space?.code || reservation.space_code)}
                 </span>
               </div>
               {reservation.event_name && (
@@ -584,7 +592,7 @@ function SendBatchModal({ reservations, onClose }) {
                           {r.space?.code || r.space_code || "—"}
                         </span>
                         <span style={{ color:"#7d8490", fontSize:11, marginLeft:8 }}>
-                          Zona {r.space?.zone || r.zone}
+                          {getParqueoLabel(r.space?.zone || r.zone, r.space?.code || r.space_code)}
                         </span>
                       </div>
                       <span style={{ fontSize:11, color:"#7d8490" }}>{fmtDate(r.start_time)}</span>
@@ -896,7 +904,7 @@ export default function Reservas() {
                               </span>
                             </td>
                             <td>
-                              <span className="badge badge-default">Zona {zone}</span>
+                              <span className="badge badge-default">{getParqueoLabel(zone, code)}</span>
                             </td>
                             <td>
                               <span className={`badge ${
