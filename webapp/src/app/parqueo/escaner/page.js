@@ -7,21 +7,24 @@ import api from "@/lib/api";
 
 // ── Modal: Generar QR visitante ───────────────────────────────────────────────
 function VisitorModal({ onClose }) {
-  const [form, setForm]     = useState({ name: "", document: "", max_hours: 2 });
-  const [loading, setLoading] = useState(false);
-  const [qrData, setQrData] = useState(null);
-  const [error, setError]   = useState("");
-  const qrRef = useRef(null);
+  const [form, setForm]         = useState({ name: "", vehicle_plate: "", max_hours: 2 });
+  const [loading, setLoading]   = useState(false);
+  const [qrData, setQrData]     = useState(null);
+  const [error, setError]       = useState("");
+  const [email, setEmail]       = useState("");
+  const [sending, setSending]   = useState(false);
+  const [emailOk, setEmailOk]   = useState(false);
+  const [emailErr, setEmailErr] = useState("");
 
   const generar = async () => {
     if (!form.name.trim()) { setError("El nombre es obligatorio."); return; }
     setLoading(true);
     setError("");
     try {
-      const res = await api.post("/qr-access/generate-visitor", {
-        name:      form.name.trim(),
-        document:  form.document.trim() || null,
-        max_hours: Number(form.max_hours),
+      const res = await api.post("/qr/visitor", {
+        visitor_name:  form.name.trim(),
+        vehicle_plate: form.vehicle_plate.trim() || "N/A",
+        valid_hours:   Number(form.max_hours),
       });
       setQrData(res.data.data);
     } catch (e) {
@@ -33,27 +36,43 @@ function VisitorModal({ onClose }) {
     }
   };
 
-  // Render QR en canvas usando qrcode.js si está disponible, si no muestra el código
-  useEffect(() => {
-    if (!qrData || !qrRef.current) return;
-    if (window.QRCode) {
-      qrRef.current.innerHTML = "";
-      new window.QRCode(qrRef.current, {
-        text: qrData.code || qrData.token || qrData.id,
-        width: 180, height: 180,
-        colorDark: "#222", colorLight: "#fff",
+  const sendEmail = async () => {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailErr("Ingresa un correo válido."); return;
+    }
+    setSending(true); setEmailErr("");
+    try {
+      const now = new Date();
+      const expires = new Date(now.getTime() + form.max_hours * 3600000);
+      const res = await fetch("/api/parqueo/qr/send-email", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          reservation: {
+            id:                 qrData.qr_code || qrData.code || qrData.token || qrData.id || "VISITA",
+            spaceCode:          qrData.space_code || "Visitante",
+            zone:               qrData.zone || "—",
+            type:               "SPECIAL_VISIT",
+            eventName:          null,
+            startTime:          now.toISOString(),
+            endTime:            expires.toISOString(),
+            startTimeFormatted: now.toLocaleString("es-GT"),
+            endTimeFormatted:   expires.toLocaleString("es-GT"),
+          },
+        }),
       });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al enviar.");
+      setEmailOk(true);
+    } catch (e) {
+      setEmailErr(e.message);
+    } finally {
+      setSending(false);
     }
-  }, [qrData]);
+  };
 
-  // Cargar qrcode.js si no está
-  useEffect(() => {
-    if (!window.QRCode) {
-      const s = document.createElement("script");
-      s.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js";
-      document.head.appendChild(s);
-    }
-  }, []);
+  // qr_image ya viene como data URL del API — no se necesita librería externa
 
   return (
     <div className="modal" style={{
@@ -82,11 +101,11 @@ function VisitorModal({ onClose }) {
                   />
                 </div>
                 <div className="form-group">
-                  <label style={{ fontSize: 13, fontWeight: 600 }}>DPI / Documento <span style={{ color: "#7d8490", fontWeight: 400 }}>(opcional)</span></label>
+                  <label style={{ fontSize: 13, fontWeight: 600 }}>Placa del vehículo <span style={{ color: "#7d8490", fontWeight: 400 }}>(opcional)</span></label>
                   <input className="form-control form-control-sm"
-                    placeholder="2345678901234"
-                    value={form.document}
-                    onChange={e => setForm(f => ({ ...f, document: e.target.value }))}
+                    placeholder="ABC-123"
+                    value={form.vehicle_plate}
+                    onChange={e => setForm(f => ({ ...f, vehicle_plate: e.target.value }))}
                   />
                 </div>
                 <div className="form-group">
@@ -103,21 +122,55 @@ function VisitorModal({ onClose }) {
               </>
             ) : (
               <div style={{ textAlign: "center" }}>
-                <div ref={qrRef} style={{ display: "inline-block", padding: 12, background: "#fff", borderRadius: 8, marginBottom: 12 }}>
-                  {/* QR renderizado aquí por qrcode.js; si no carga, mostramos icono */}
-                  {!window.QRCode && <i className="fa fa-qrcode" style={{ fontSize: 120, color: "#222" }} />}
+                <div style={{ display: "inline-block", padding: 12, background: "#fff", borderRadius: 8, marginBottom: 12 }}>
+                  {qrData.qr_image
+                    ? <img src={qrData.qr_image} alt="QR" style={{ width: 180, height: 180, display: "block" }} />
+                    : <i className="fa fa-qrcode" style={{ fontSize: 120, color: "#222" }} />}
                 </div>
-                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{qrData.name || form.name}</div>
+                <div style={{ fontWeight: 700, fontSize: 16, marginBottom: 4 }}>{qrData.visitor_name || qrData.name || form.name}</div>
                 <div style={{ fontSize: 12, color: "#7d8490", marginBottom: 8 }}>
-                  Válido por {qrData.max_hours || form.max_hours} hora(s)
+                  Válido por {form.max_hours} hora(s)
                   {qrData.expires_at && ` · Vence: ${new Date(qrData.expires_at).toLocaleTimeString("es-GT")}`}
                 </div>
                 <div style={{
                   background: "rgba(255,255,255,0.06)", borderRadius: 6,
                   padding: "6px 12px", fontSize: 11, color: "#7d8490",
-                  wordBreak: "break-all", fontFamily: "monospace",
+                  wordBreak: "break-all", fontFamily: "monospace", marginBottom: 16,
                 }}>
-                  {(qrData.code || qrData.token || qrData.id || "").slice(0, 40)}…
+                  {(qrData.qr_code || qrData.code || qrData.token || qrData.id || "").slice(0, 40)}…
+                </div>
+
+                {/* Enviar por correo */}
+                <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 14 }}>
+                  <label style={{ fontSize: 12, fontWeight: 600, marginBottom: 6, display: "block", color: "#7d8490" }}>
+                    <i className="fa fa-envelope" style={{ marginRight: 6 }} />
+                    Enviar QR por correo
+                  </label>
+                  {emailOk ? (
+                    <div style={{ color: "#21ba45", fontSize: 13, textAlign: "center" }}>
+                      <i className="fa fa-check-circle" style={{ marginRight: 6 }} />
+                      Correo enviado a <strong>{email}</strong>
+                    </div>
+                  ) : (
+                    <div className="input-group input-group-sm">
+                      <input
+                        type="email"
+                        className="form-control"
+                        placeholder="correo@ejemplo.com"
+                        value={email}
+                        onChange={e => { setEmail(e.target.value); setEmailErr(""); }}
+                        onKeyDown={e => e.key === "Enter" && sendEmail()}
+                      />
+                      <div className="input-group-append">
+                        <button className="btn btn-info" onClick={sendEmail} disabled={sending}>
+                          {sending
+                            ? <i className="fa fa-spinner fa-spin" />
+                            : <i className="fa fa-paper-plane" />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {emailErr && <p style={{ color: "#db2828", fontSize: 11, marginTop: 4, marginBottom: 0 }}>{emailErr}</p>}
                 </div>
               </div>
             )}
@@ -253,7 +306,7 @@ export default function EscanerQR() {
     setProcessing(true);
     stopCamera();
     try {
-      const res = await api.post("/qr-access/scan", { code: code.trim() });
+      const res = await api.post("/qr/scan", { code: code.trim() });
       setResult({ success: true, ...res.data.data });
       setScanCount(c => c + 1);
     } catch (e) {

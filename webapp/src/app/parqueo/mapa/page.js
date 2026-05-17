@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import api from "@/lib/api";
 
-// ── Colores por estado (usando colores de la plantilla) ───────────────────────
+// ── Colores por estado ────────────────────────────────────────────────────────
 const STATUS_COLOR = {
   AVAILABLE:   { fill: "#21ba45", stroke: "#1a9438", label: "Disponible" },
   OCCUPIED:    { fill: "#db2828", stroke: "#b52020", label: "Ocupado"    },
@@ -17,80 +17,15 @@ const TYPE_OVERRIDE = {
   TEACHER:     { fill: "#800020", stroke: "#5a0016", label: "Docente"     },
 };
 
-// ── Zona SVG: grilla de espacios ──────────────────────────────────────────────
-function ZoneGrid({ zone, spaces, onSpaceClick, W = 380, H = 300 }) {
-  const COLS = 10;
-  const PAD  = 28;
-  const GAP  = 3;
-  const cellW = (W - PAD * 2 - GAP * (COLS - 1)) / COLS;
-  const rows  = Math.ceil(spaces.length / COLS);
-  const cellH = Math.min(cellW * 0.7, (H - PAD * 2 - GAP * (rows - 1)) / rows);
-
-  return (
-    <g>
-      {/* Fondo de zona */}
-      <rect x={0} y={0} width={W} height={H}
-        fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.08)"
-        strokeWidth={1.5} rx={8} />
-
-      {/* Etiqueta de zona */}
-      <text x={W / 2} y={16} textAnchor="middle"
-        fill="#800020" fontSize={13} fontWeight={700}>
-        ZONA {zone}
-      </text>
-
-      {/* Pasillo central horizontal */}
-      <rect x={PAD} y={H / 2 - 6} width={W - PAD * 2} height={12}
-        fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)"
-        strokeWidth={1} rx={2} />
-      <text x={W / 2} y={H / 2 + 4} textAnchor="middle"
-        fill="rgba(255,255,255,0.2)" fontSize={8}>▶ pasillo ▶</text>
-
-      {/* Espacios */}
-      {spaces.map((sp, i) => {
-        const col = i % COLS;
-        const row = Math.floor(i / COLS);
-        const half = Math.floor(rows / 2);
-        // Partir en dos bloques con pasillo en medio
-        const rowOffset = row >= half ? row + 1 : row;
-        const x = PAD + col * (cellW + GAP);
-        const y = PAD + rowOffset * (cellH + GAP);
-
-        const c = (sp.status !== "AVAILABLE" && TYPE_OVERRIDE[sp.type])
-          ? TYPE_OVERRIDE[sp.type]
-          : STATUS_COLOR[sp.status] || STATUS_COLOR.AVAILABLE;
-
-        return (
-          <g key={sp.id}
-            onClick={() => onSpaceClick(sp)}
-            style={{ cursor: "pointer" }}>
-            <rect x={x} y={y} width={cellW} height={cellH}
-              fill={c.fill} stroke={c.stroke} strokeWidth={1} rx={2}
-              opacity={0.85}
-            />
-            <text x={x + cellW / 2} y={y + cellH / 2 + 3}
-              textAnchor="middle" fill="#fff" fontSize={6.5} fontWeight={600}>
-              {sp.code.split("-")[1]}
-            </text>
-          </g>
-        );
-      })}
-    </g>
-  );
-}
-
 // ── Modal de detalle de espacio ───────────────────────────────────────────────
 function SpaceModal({ space, onClose, onAssign }) {
   if (!space) return null;
   const session = space._session;
   const isOccupied = space.status === "OCCUPIED";
-
   const dur = session
     ? Math.floor((Date.now() - new Date(session.entry_time).getTime()) / 60000)
     : 0;
-  const monto = session
-    ? ((dur / 60) * 5).toFixed(2)
-    : "0.00";
+  const monto = session ? ((dur / 60) * 5).toFixed(2) : "0.00";
 
   return (
     <div className="modal" style={{
@@ -105,12 +40,9 @@ function SpaceModal({ space, onClose, onAssign }) {
               <i className="fa fa-map-marker" style={{ marginRight: 8 }} />
               Espacio {space.code} — Zona {space.zone}
             </h5>
-            <button type="button" className="close" onClick={onClose}>
-              <span>&times;</span>
-            </button>
+            <button type="button" className="close" onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
-            {/* Estado y tipo */}
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
               <span className={`badge ${
                 space.status === "AVAILABLE" ? "badge-success" :
@@ -118,11 +50,7 @@ function SpaceModal({ space, onClose, onAssign }) {
                 space.status === "RESERVED"  ? "badge-warning" : "badge-secondary"
               }`}>{STATUS_COLOR[space.status]?.label || space.status}</span>
               <span className="badge badge-default">{space.type}</span>
-              {space.floor !== undefined && (
-                <span className="badge badge-info">Nivel {space.floor}</span>
-              )}
             </div>
-
             {isOccupied && session ? (
               <table className="table table-sm">
                 <tbody>
@@ -130,26 +58,18 @@ function SpaceModal({ space, onClose, onAssign }) {
                     <td><strong style={{ color: "#800020" }}>{session.vehicle?.placa || "—"}</strong></td></tr>
                   <tr><td style={{ color: "#7d8490" }}>Propietario</td>
                     <td>{session.user ? `${session.user.first_name} ${session.user.last_name}` : "—"}</td></tr>
-                  <tr><td style={{ color: "#7d8490" }}>Vehículo</td>
-                    <td>{[session.vehicle?.brand, session.vehicle?.model, session.vehicle?.color].filter(Boolean).join(" ") || "—"}</td></tr>
                   <tr><td style={{ color: "#7d8490" }}>Hora entrada</td>
                     <td>{session.entry_time ? new Date(session.entry_time).toLocaleTimeString("es-GT") : "—"}</td></tr>
                   <tr><td style={{ color: "#7d8490" }}>Tiempo</td>
                     <td><strong>{dur < 60 ? `${dur}m` : `${Math.floor(dur / 60)}h ${dur % 60}m`}</strong></td></tr>
-                  <tr><td style={{ color: "#7d8490" }}>Monto acumulado</td>
+                  <tr><td style={{ color: "#7d8490" }}>Monto</td>
                     <td><strong style={{ color: "#21ba45" }}>Q {monto}</strong></td></tr>
-                  <tr><td style={{ color: "#7d8490" }}>Método entrada</td>
-                    <td><span className="badge badge-info">{session.entry_method || "MANUAL"}</span></td></tr>
-                  <tr><td style={{ color: "#7d8490" }}>Pago</td>
-                    <td><span className={`badge ${session.is_paid ? "badge-success" : "badge-warning"}`}>
-                      {session.is_paid ? "Pagado" : "Pendiente"}
-                    </span></td></tr>
                 </tbody>
               </table>
             ) : !isOccupied ? (
               <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
                 <i className="fa fa-check-circle fa-3x" style={{ color: "#21ba45", display: "block", marginBottom: 12 }} />
-                <p style={{ color: "#7d8490", marginBottom: 0 }}>Espacio disponible para asignación</p>
+                <p style={{ color: "#7d8490", marginBottom: 0 }}>Espacio disponible</p>
               </div>
             ) : (
               <p style={{ color: "#7d8490" }}>Sin datos de sesión activa.</p>
@@ -158,8 +78,7 @@ function SpaceModal({ space, onClose, onAssign }) {
           <div className="modal-footer" style={{ borderTop: "1px solid rgba(255,255,255,0.08)" }}>
             {!isOccupied && (
               <button className="btn btn-success btn-sm" onClick={() => onAssign(space)}>
-                <i className="fa fa-plus" style={{ marginRight: 6 }} />
-                Asignar manualmente
+                <i className="fa fa-plus" style={{ marginRight: 6 }} />Asignar manualmente
               </button>
             )}
             <button className="btn btn-secondary btn-sm" onClick={onClose}>Cerrar</button>
@@ -172,24 +91,20 @@ function SpaceModal({ space, onClose, onAssign }) {
 
 // ── Modal asignación manual ────────────────────────────────────────────────────
 function AssignModal({ space, onClose, onSubmit }) {
-  const [plate, setPlate]   = useState("");
+  const [plate, setPlate]     = useState("");
   const [loading, setLoading] = useState(false);
-  const [msg, setMsg]       = useState("");
+  const [msg, setMsg]         = useState("");
   const [vehicleId, setVehicleId] = useState("");
-  const [found, setFound]   = useState(null);
+  const [found, setFound]     = useState(null);
 
   const searchVehicle = async () => {
     if (!plate.trim()) return;
     try {
       const res = await api.get(`/vehicles/search?plate=${plate.toUpperCase()}`);
       const v = res.data.data;
-      setFound(v);
-      setVehicleId(v.id);
-      setMsg("");
+      setFound(v); setVehicleId(v.id); setMsg("");
     } catch {
-      setFound(null);
-      setVehicleId("");
-      setMsg("Vehículo no encontrado.");
+      setFound(null); setVehicleId(""); setMsg("Vehículo no encontrado.");
     }
   };
 
@@ -197,17 +112,11 @@ function AssignModal({ space, onClose, onSubmit }) {
     if (!vehicleId) return;
     setLoading(true);
     try {
-      await api.post("/parking-sessions/entry", {
-        vehicle_id: vehicleId,
-        space_id: space.id,
-        entry_method: "MANUAL",
-      });
+      await api.post("/sessions", { vehicle_id: vehicleId, space_id: space.id, entry_method: "MANUAL" });
       onSubmit();
     } catch (e) {
       setMsg(e.response?.data?.message || "Error al registrar entrada.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   return (
@@ -219,41 +128,30 @@ function AssignModal({ space, onClose, onSubmit }) {
         onClick={e => e.stopPropagation()}>
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title" style={{ color: "#800020" }}>
-              Asignar espacio {space.code}
-            </h5>
+            <h5 className="modal-title" style={{ color: "#800020" }}>Asignar espacio {space.code}</h5>
             <button className="close" onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div className="form-group">
               <label style={{ fontSize: 13, fontWeight: 600 }}>Buscar por placa</label>
               <div className="input-group">
-                <input className="form-control form-control-sm"
-                  placeholder="Ej: P-001ABC"
-                  value={plate}
+                <input className="form-control" value={plate}
                   onChange={e => setPlate(e.target.value.toUpperCase())}
                   onKeyDown={e => e.key === "Enter" && searchVehicle()}
-                />
+                  placeholder="ABC-123" />
                 <div className="input-group-append">
-                  <button className="btn btn-primary btn-sm" onClick={searchVehicle}>
-                    <i className="fa fa-search" />
-                  </button>
+                  <button className="btn btn-primary btn-sm" onClick={searchVehicle}>Buscar</button>
                 </div>
               </div>
             </div>
-
             {found && (
-              <div style={{
-                background: "rgba(33,186,69,0.1)", border: "1px solid #21ba45",
-                borderRadius: 6, padding: "10px 12px", marginTop: 8,
-              }}>
+              <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 6, padding: "10px 14px", marginTop: 8 }}>
                 <div style={{ fontWeight: 700, color: "#800020" }}>{found.placa}</div>
                 <div style={{ fontSize: 12, color: "#7d8490" }}>
                   {[found.brand, found.model, found.color, found.year].filter(Boolean).join(" · ")}
                 </div>
                 <div style={{ fontSize: 12, marginTop: 4 }}>
-                  Propietario:{" "}
-                  <strong>{found.user ? `${found.user.first_name} ${found.user.last_name}` : "—"}</strong>
+                  Propietario: <strong>{found.user ? `${found.user.first_name} ${found.user.last_name}` : "—"}</strong>
                 </div>
                 {found.blacklisted && (
                   <div style={{ color: "#db2828", fontWeight: 700, marginTop: 4, fontSize: 12 }}>
@@ -277,12 +175,313 @@ function AssignModal({ space, onClose, onSubmit }) {
   );
 }
 
+// ── Mapa con imagen satelital real + polígonos SVG ───────────────────────────
+// Imagen: mapa-campus-real.png — 1536×1024 px
+// viewBox: 0 0 1536 1024
+// Coordenadas estimadas sobre los 6 parqueos visibles en la imagen real.
+
+// Coordenadas trazadas sobre mapa-campus-real.png (1536×1024)
+// P5 = rectángulo arriba centro
+// P1 = rectángulo izquierda (grande, 3 filas de espacios)
+// P2 = rectángulo centro-inferior
+// P6 = polígono irregular grande centro-derecha
+// P3 = dos tiras paralelas lado derecho
+// P4 = rectángulo derecha-inferior
+const PARQUEOS = [
+  {
+    id: "P5", zone: "A", label: "Parqueo 5",
+    pts: "631.613,17.504 714.758,62.724 612.65,195.464 526.587,134.199",
+    lx: 621, ly: 102,
+  },
+  {
+    id: "P1", zone: "A", label: "Parqueo 1",
+    pts: "224.638,627.236 423.02,285.903 504.707,339.875 309.242,681.208",
+    lx: 365, ly: 483,
+  },
+  {
+    id: "P2", zone: "B", label: "Parqueo 2",
+    pts: "468.239,590.769 666.621,694.336 625.778,761.436 433.231,643.282",
+    lx: 548, ly: 672,
+  },
+  {
+    id: "P6", zone: "B", label: "Parqueo 6",
+    pts: "781.858,633.071 986.074,590.769 1059.01,809.573 951.066,951.066 853.333,933.561 748.308,816.866 723.51,697.254",
+    lx: 871, ly: 790,
+  },
+  {
+    id: "P3", zone: "C", label: "Parqueo 3",
+    pts: "1117.36,463.863 1184.46,516.376 1080.89,637.447 1018.17,577.641",
+    lx: 1100, ly: 548,
+  },
+  {
+    id: "P4", zone: "D", label: "Parqueo 4",
+    pts: "1204.88,554.302 1277.81,602.439 1153.82,774.564 1075.05,710.382",
+    lx: 1178, ly: 660,
+  },
+];
+
+function zoneColor(pct) {
+  if (pct > 85) return "#db2828";
+  if (pct > 60) return "#fbbd08";
+  return "#21ba45";
+}
+
+// Panel lateral: grid de espacios del parqueo seleccionado
+function SpacePanel({ parqueo, zoneSpaces, onClose, onSpaceClick }) {
+  const [selectedSpace, setSelectedSpace] = useState(null);
+
+  const spaceColor = (sp) => {
+    if (selectedSpace?.id === sp.id) return "#1678c2";
+    if (sp.status === "OCCUPIED")    return "#db2828";
+    if (sp.status === "RESERVED")    return "#fbbd08";
+    if (sp.status === "MAINTENANCE") return "#7d8490";
+    return "#21ba45";
+  };
+
+  return (
+    <div style={{
+      background: "#fff", borderRadius: 10, padding: "16px",
+      width: 290, boxShadow: "0 4px 24px rgba(0,0,0,0.22)",
+      color: "#222", flexShrink: 0, alignSelf: "flex-start",
+    }}>
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <span style={{ fontWeight: 700, fontSize: 15 }}>Seleccionar espacio</span>
+        <button onClick={onClose} style={{
+          border: "none", background: "none", fontSize: 20,
+          cursor: "pointer", color: "#888", lineHeight: 1, padding: 0,
+        }}>×</button>
+      </div>
+
+      {/* Etiqueta parqueo */}
+      <div style={{
+        border: "1px solid #ddd", borderRadius: 6, padding: "8px 12px",
+        marginBottom: 12, fontWeight: 600, fontSize: 14,
+        display: "flex", justifyContent: "space-between",
+      }}>
+        <span>{parqueo.label}</span>
+        <span style={{ color: "#888", fontSize: 12, alignSelf: "center" }}>Zona {parqueo.zone}</span>
+      </div>
+
+      {/* Grid de espacios */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "repeat(6, 1fr)",
+        gap: 5, marginBottom: 14, maxHeight: 320, overflowY: "auto",
+      }}>
+        {zoneSpaces.length === 0 ? (
+          <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#aaa", fontSize: 12, padding: "20px 0" }}>
+            Sin espacios registrados
+          </div>
+        ) : zoneSpaces.map((sp) => {
+          const num = sp.code.split("-")[1] || sp.code;
+          return (
+            <div key={sp.id}
+              onClick={() => {
+                setSelectedSpace(sp);
+                onSpaceClick?.(sp);
+              }}
+              title={`${sp.code} — ${sp.status}`}
+              style={{
+                background: spaceColor(sp),
+                color: "#fff",
+                borderRadius: 4, fontSize: 11, fontWeight: 700,
+                textAlign: "center", padding: "5px 2px",
+                cursor: sp.status === "OCCUPIED" ? "not-allowed" : "pointer",
+                opacity: sp.status === "MAINTENANCE" ? 0.55 : 1,
+              }}>
+              {num}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Leyenda */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "5px 10px", fontSize: 11, color: "#555" }}>
+        {[
+          ["#21ba45", "Disponible"],
+          ["#db2828", "Ocupado"],
+          ["#1678c2", "Seleccionado"],
+          ["#fbbd08", "Reservado"],
+          ["#7d8490", "No disponible"],
+        ].map(([c, l]) => (
+          <span key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <span style={{ width: 12, height: 12, background: c, borderRadius: 2, display: "inline-block", flexShrink: 0 }} />{l}
+          </span>
+        ))}
+      </div>
+
+      {/* Espacio seleccionado */}
+      {selectedSpace && (
+        <div style={{ marginTop: 12, padding: "10px 12px", background: "#f4f6fb", borderRadius: 7 }}>
+          <div style={{ fontWeight: 700, color: "#800020", marginBottom: 4 }}>{selectedSpace.code}</div>
+          <div style={{ fontSize: 12, color: "#555" }}>
+            Estado: <strong>{selectedSpace.status}</strong><br />
+            Tipo: {selectedSpace.type}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampusMap({ zoneStats, spaces, onSpaceClick }) {
+  const [hovered, setHovered]      = useState(null);
+  const [activeParqueo, setActive] = useState(null);
+  const [tooltip, setTooltip]      = useState({ x: 0, y: 0 });
+
+  const handleMove = (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    setTooltip({
+      x: (e.clientX - r.left) * (1536 / r.width),
+      y: (e.clientY - r.top)  * (1024 / r.height),
+    });
+  };
+
+  const hovP = PARQUEOS.find(p => p.id === hovered);
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* SVG mapa */}
+      <div>
+        <svg
+          viewBox="0 0 1536 1024"
+          style={{ width: "100%", borderRadius: 8, display: "block" }}
+          onMouseMove={handleMove}
+        >
+          <defs>
+            <filter id="lbl-shadow">
+              <feDropShadow dx="0" dy="1" stdDeviation="3" floodOpacity="0.9" />
+            </filter>
+          </defs>
+
+          {/* Imagen satelital de fondo */}
+          <image href="/mapa-campus-real.png" x={0} y={0} width={1536} height={1024}
+            preserveAspectRatio="xMidYMid slice" />
+
+          {/* Polígonos de los 6 parqueos */}
+          {PARQUEOS.map(({ id, zone, label, pts, lx, ly }) => {
+            const zs   = zoneStats[zone] || {};
+            const pct  = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+            const isHov = hovered === id;
+            const isAct = activeParqueo?.id === id;
+
+            return (
+              <g key={id}
+                onMouseEnter={() => setHovered(id)}
+                onMouseLeave={() => setHovered(null)}
+                onClick={() => setActive(isAct ? null : { id, zone, label })}
+                style={{ cursor: "pointer" }}>
+
+                <polygon
+                  points={pts}
+                  fill={isHov || isAct ? "#db2828" : "transparent"}
+                  fillOpacity={isHov || isAct ? 0.25 : 0}
+                  stroke="none"
+                />
+
+                {/* Etiqueta roja */}
+                <rect x={lx - 62} y={ly - 28} width={124} height={50} rx={8}
+                  fill="rgba(180,0,30,0.90)" />
+                <text x={lx} y={ly - 10} textAnchor="middle"
+                  fill="#fff" fontSize={16} fontWeight={800}
+                  filter="url(#lbl-shadow)">
+                  {label}
+                </text>
+                <text x={lx} y={ly + 10} textAnchor="middle"
+                  fill={zs.available > 0 ? "#7ef0a0" : "#ffbaba"} fontSize={13} fontWeight={700}>
+                  {zs.total ?? "—"} espacios
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ENTRADA */}
+          <g>
+            <rect x={692} y={938} width={182} height={62} rx={12} fill="#21ba45" fillOpacity={0.94} />
+            <text x={783} y={962} textAnchor="middle" fill="#fff" fontSize={14} fontWeight={800}>ENTRADA</text>
+            <text x={783} y={981} textAnchor="middle" fill="#fff" fontSize={12}>A LA UNIVERSIDAD</text>
+            <polygon points="783,1006 797,990 769,990" fill="#fff" opacity={0.9} />
+          </g>
+
+          {/* SALIDA */}
+          <g>
+            <rect x={508} y={938} width={168} height={62} rx={12} fill="#f2711c" fillOpacity={0.94} />
+            <text x={592} y={962} textAnchor="middle" fill="#fff" fontSize={14} fontWeight={800}>SALIDA</text>
+            <text x={592} y={981} textAnchor="middle" fill="#fff" fontSize={12}>DE LA UNIVERSIDAD</text>
+            <polygon points="592,1006 606,990 578,990" fill="#fff" opacity={0.9} />
+          </g>
+
+          {/* Rosa de los vientos */}
+          <g transform="translate(1490,55)">
+            <circle cx={0} cy={0} r={30} fill="rgba(0,0,0,0.55)" stroke="rgba(255,255,255,0.3)" strokeWidth={1.5} />
+            <polygon points="0,-22 5,-10 -5,-10" fill="#fff" opacity={0.9} />
+            <text x={0} y={7} textAnchor="middle" fill="#fff" fontSize={14} fontWeight={900}>N</text>
+            <polygon points="0,22 5,10 -5,10" fill="rgba(255,255,255,0.3)" />
+          </g>
+
+          {/* Tooltip al hacer hover */}
+          {hovP && (() => {
+            const zs   = zoneStats[hovP.zone] || {};
+            const pct  = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+            const fill = zoneColor(pct);
+            const tx = Math.min(tooltip.x + 20, 1340);
+            const ty = Math.max(tooltip.y - 120, 8);
+            return (
+              <g pointerEvents="none">
+                <rect x={tx} y={ty} width={190} height={96} rx={10}
+                  fill="rgba(10,10,18,0.94)" stroke={fill} strokeWidth={2} />
+                <text x={tx + 95} y={ty + 22} textAnchor="middle" fill="#fff" fontSize={15} fontWeight={800}>
+                  {hovP.label}
+                </text>
+                <text x={tx + 95} y={ty + 50} textAnchor="middle" fill={fill} fontSize={24} fontWeight={900}>
+                  {pct}%
+                </text>
+                <text x={tx + 95} y={ty + 68} textAnchor="middle" fill="#aaa" fontSize={12}>ocupado</text>
+                <text x={tx + 95} y={ty + 85} textAnchor="middle" fill="#888" fontSize={11}>
+                  {zs.available ?? 0} libres · {zs.occupied ?? 0} ocupados
+                </text>
+              </g>
+            );
+          })()}
+        </svg>
+
+        {/* Leyenda inferior */}
+        <div style={{ display: "flex", gap: 18, marginTop: 8, fontSize: 12, color: "#7d8490", flexWrap: "wrap" }}>
+          {[["#21ba45", "< 60% Disponible"], ["#fbbd08", "60–85% Moderado"], ["#db2828", "> 85% Lleno"]].map(([c, l]) => (
+            <span key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+              <span style={{ width: 12, height: 12, background: c, borderRadius: 2, display: "inline-block" }} />{l}
+            </span>
+          ))}
+          <span style={{ marginLeft: "auto", color: "#7d8490" }}>
+            <i className="fa fa-mouse-pointer" style={{ marginRight: 4 }} />
+            Click en un parqueo para ver sus espacios
+          </span>
+        </div>
+      </div>
+
+      {/* Panel flotante sobre el mapa */}
+      {activeParqueo && (
+        <div style={{
+          position: "absolute", top: 8, right: 8,
+          zIndex: 10, maxHeight: "calc(100% - 16px)", overflowY: "auto",
+        }}>
+          <SpacePanel
+            parqueo={activeParqueo}
+            zoneSpaces={spaces[activeParqueo.zone] || []}
+            onClose={() => setActive(null)}
+            onSpaceClick={onSpaceClick}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Página principal del mapa ─────────────────────────────────────────────────
 export default function MapaParqueo() {
   const [spaces, setSpaces]         = useState({ A: [], B: [], C: [], D: [] });
   const [zoneStats, setZoneStats]   = useState({});
   const [selected, setSelected]     = useState(null);
-  const [sessions, setSessions]     = useState([]);
   const [assigning, setAssigning]   = useState(null);
   const [loading, setLoading]       = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -290,20 +489,17 @@ export default function MapaParqueo() {
   const load = useCallback(async () => {
     try {
       const [spacesRes, statusRes, sessionsRes] = await Promise.all([
-        api.get("/parking-spaces?limit=600"),
-        api.get("/parking-spaces/status"),
-        api.get("/parking-sessions/active"),
+        api.get("/spaces?limit=600"),
+        api.get("/spaces/status"),
+        api.get("/sessions/active"),
       ]);
 
       const allSpaces = spacesRes.data.data || [];
       const activeSessions = sessionsRes.data.data?.sessions || [];
-      setSessions(activeSessions);
 
-      // Indexar sesiones por space_id
       const sessMap = {};
       activeSessions.forEach(s => { sessMap[s.space_id] = s; });
 
-      // Agrupar por zona y enriquecer con sesión
       const grouped = { A: [], B: [], C: [], D: [] };
       allSpaces.forEach(sp => {
         if (grouped[sp.zone] !== undefined) {
@@ -349,9 +545,8 @@ export default function MapaParqueo() {
   return (
     <>
       <div className="row clearfix">
-        {/* ── Panel lateral izquierdo ─────────────────────────────────── */}
+        {/* Panel lateral izquierdo */}
         <div className="col-lg-3 col-md-12">
-          {/* Resumen global */}
           <div className="card" style={{ marginBottom: "1rem" }}>
             <div className="card-header">
               <h3 className="card-title"><i className="fa fa-map" style={{ marginRight: 6 }} />Resumen campus</h3>
@@ -376,7 +571,6 @@ export default function MapaParqueo() {
             </div>
           </div>
 
-          {/* Stats por zona */}
           {["A", "B", "C", "D"].map(z => {
             const zs = zoneStats[z] || {};
             const pct = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
@@ -401,16 +595,15 @@ export default function MapaParqueo() {
             );
           })}
 
-          {/* Leyenda */}
           <div className="card">
             <div className="card-header">
               <h3 className="card-title" style={{ fontSize: 13 }}>Leyenda</h3>
             </div>
             <div className="card-body" style={{ padding: "0.75rem 1rem" }}>
               {[
-                ...Object.entries(STATUS_COLOR).map(([k, v]) => ({ color: v.fill, label: v.label })),
-                ...Object.entries(TYPE_OVERRIDE).filter(([k]) => ["HANDICAPPED", "ELECTRIC"].includes(k))
-                  .map(([k, v]) => ({ color: v.fill, label: v.label })),
+                ...Object.entries(STATUS_COLOR).map(([, v]) => ({ color: v.fill, label: v.label })),
+                { color: TYPE_OVERRIDE.HANDICAPPED.fill, label: TYPE_OVERRIDE.HANDICAPPED.label },
+                { color: TYPE_OVERRIDE.ELECTRIC.fill,    label: TYPE_OVERRIDE.ELECTRIC.label    },
               ].map(({ color, label }) => (
                 <div key={label} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
                   <div style={{ width: 14, height: 14, background: color, borderRadius: 3, flexShrink: 0 }} />
@@ -428,7 +621,7 @@ export default function MapaParqueo() {
           )}
         </div>
 
-        {/* ── Mapa SVG ──────────────────────────────────────────────── */}
+        {/* Mapa */}
         <div className="col-lg-9 col-md-12">
           <div className="card">
             <div className="card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -440,57 +633,17 @@ export default function MapaParqueo() {
                 <i className="fa fa-refresh" />
               </button>
             </div>
-            <div className="card-body" style={{ padding: "1rem", overflowX: "auto" }}>
-              <svg
-                viewBox="0 0 820 680"
-                style={{ width: "100%", minWidth: 600, background: "rgba(0,0,0,0.15)", borderRadius: 8 }}
-              >
-                {/* Fondo del campus */}
-                <rect x={0} y={0} width={820} height={680} fill="rgba(0,0,0,0.1)" />
-
-                {/* Etiqueta campus */}
-                <text x={410} y={24} textAnchor="middle" fill="rgba(255,255,255,0.3)" fontSize={11}>
-                  Campus Central USPG · 14.5847°N, 90.5085°W
-                </text>
-
-                {/* Avenida central vertical */}
-                <rect x={395} y={30} width={30} height={620} fill="rgba(255,255,255,0.06)" />
-                <text x={410} y={340} textAnchor="middle" fill="rgba(255,255,255,0.15)" fontSize={9}
-                  transform="rotate(-90 410 340)">AV. PRINCIPAL</text>
-
-                {/* Calle central horizontal */}
-                <rect x={10} y={330} width={800} height={20} fill="rgba(255,255,255,0.06)" />
-
-                {/* Zona A — arriba izquierda */}
-                <g transform="translate(10, 35)">
-                  <ZoneGrid zone="A" spaces={spaces.A} onSpaceClick={handleSpaceClick} W={370} H={280} />
-                </g>
-
-                {/* Zona B — arriba derecha */}
-                <g transform="translate(440, 35)">
-                  <ZoneGrid zone="B" spaces={spaces.B} onSpaceClick={handleSpaceClick} W={370} H={280} />
-                </g>
-
-                {/* Zona C — abajo izquierda */}
-                <g transform="translate(10, 360)">
-                  <ZoneGrid zone="C" spaces={spaces.C} onSpaceClick={handleSpaceClick} W={370} H={280} />
-                </g>
-
-                {/* Zona D — abajo derecha */}
-                <g transform="translate(440, 360)">
-                  <ZoneGrid zone="D" spaces={spaces.D} onSpaceClick={handleSpaceClick} W={370} H={280} />
-                </g>
-              </svg>
-
-              <p style={{ fontSize: 11, color: "#7d8490", textAlign: "center", marginTop: 8 }}>
-                Click en cualquier espacio para ver detalles
-              </p>
+            <div className="card-body" style={{ padding: "1rem" }}>
+              <CampusMap
+                zoneStats={zoneStats}
+                spaces={spaces}
+                onSpaceClick={handleSpaceClick}
+              />
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── Modals ─────────────────────────────────────────────────────────── */}
       {selected && (
         <SpaceModal
           space={selected}
