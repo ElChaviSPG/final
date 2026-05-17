@@ -156,12 +156,11 @@ function AssignModal({ space, onClose, onSubmit }) {
     setRegistering(true); setMsg("");
     try {
       const res = await api.post("/vehicles", {
-        placa:      plate.toUpperCase(),
-        brand:      regForm.brand  || "No especificado",
-        model:      regForm.model  || "No especificado",
-        color:      regForm.color  || "No especificado",
-        visitor:    true,
-        visitor_name: `${regForm.first_name.trim()} ${regForm.last_name.trim()}`.trim(),
+        placa:  plate.toUpperCase(),
+        brand:  regForm.brand  || "No especificado",
+        model:  regForm.model  || "No especificado",
+        color:  regForm.color  || "No especificado",
+        owner_carnet: null,
       });
       const v = res.data.data;
       setFound(v); setVehicleId(v.id);
