@@ -6,28 +6,32 @@ const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(request) {
   try {
-    const { email, reservation } = await request.json();
+    const { email, reservation, qrImageBase64 } = await request.json();
 
     if (!email || !reservation) {
       return NextResponse.json({ error: "Email y reserva son requeridos." }, { status: 400 });
     }
 
-    // Datos a codificar en el QR
-    const qrData = JSON.stringify({
-      reservationId: reservation.id,
-      spaceCode:     reservation.spaceCode,
-      zone:          reservation.zone,
-      startTime:     reservation.startTime,
-      endTime:       reservation.endTime,
-      type:          reservation.type,
-    });
-
-    // Generar QR como base64 PNG
-    const qrBase64 = await QRCode.toDataURL(qrData, {
-      width: 300,
-      margin: 2,
-      color: { dark: "#800020", light: "#ffffff" },
-    });
+    // Usar imagen precalculada si viene (garantiza que el email muestre
+    // exactamente el mismo QR que se generó en pantalla)
+    let qrBase64;
+    if (qrImageBase64) {
+      qrBase64 = qrImageBase64;
+    } else {
+      const qrData = JSON.stringify({
+        reservationId: reservation.id,
+        spaceCode:     reservation.spaceCode,
+        zone:          reservation.zone,
+        startTime:     reservation.startTime,
+        endTime:       reservation.endTime,
+        type:          reservation.type,
+      });
+      qrBase64 = await QRCode.toDataURL(qrData, {
+        width: 300,
+        margin: 2,
+        color: { dark: "#800020", light: "#ffffff" },
+      });
+    }
 
     const qrBuffer = Buffer.from(qrBase64.replace(/^data:image\/png;base64,/, ""), "base64");
 

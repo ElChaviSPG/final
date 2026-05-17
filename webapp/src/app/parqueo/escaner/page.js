@@ -69,15 +69,19 @@ function VisitorModal({ onClose }) {
     }
     setSending(true); setEmailErr("");
     try {
-      const now = new Date();
+      const now     = new Date();
       const expires = new Date(now.getTime() + form.max_hours * 3600000);
       const res = await fetch("/api/parqueo/qr/send-email", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
+          // qrImageBase64 le dice al route que use esta imagen directamente
+          // en lugar de regenerar el QR — así el email muestra exactamente
+          // el mismo código que está en pantalla
+          qrImageBase64: qrData.qr_image || null,
           reservation: {
-            id:                 qrData.qr_code || qrData.code || qrData.token || qrData.id || "VISITA",
+            id:                 qrData.qr_code || qrData.code || "VISITA",
             spaceCode:          qrData.space_code || "Visitante",
             zone:               qrData.zone || "—",
             type:               "SPECIAL_VISIT",
@@ -179,22 +183,26 @@ function VisitorModal({ onClose }) {
                       Correo enviado a <strong>{email}</strong>
                     </div>
                   ) : (
-                    <div className="input-group input-group-sm">
+                    <div style={{ display:"flex", gap:6 }}>
                       <input
                         type="email"
-                        className="form-control"
+                        className="form-control form-control-sm"
                         placeholder="correo@ejemplo.com"
                         value={email}
                         onChange={e => { setEmail(e.target.value); setEmailErr(""); }}
                         onKeyDown={e => e.key === "Enter" && sendEmail()}
+                        style={{ flex:1 }}
                       />
-                      <div className="input-group-append">
-                        <button className="btn btn-info" onClick={sendEmail} disabled={sending}>
-                          {sending
-                            ? <i className="fa fa-spinner fa-spin" />
-                            : <i className="fa fa-paper-plane" />}
-                        </button>
-                      </div>
+                      <button
+                        className="btn btn-info btn-sm"
+                        onClick={sendEmail}
+                        disabled={sending}
+                        style={{ flexShrink:0, padding:"0 14px" }}
+                      >
+                        {sending
+                          ? <i className="fa fa-spinner fa-spin" />
+                          : <i className="fa fa-paper-plane" />}
+                      </button>
                     </div>
                   )}
                   {emailErr && <p style={{ color: "#db2828", fontSize: 11, marginTop: 4, marginBottom: 0 }}>{emailErr}</p>}
