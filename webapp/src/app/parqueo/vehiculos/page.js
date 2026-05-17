@@ -332,6 +332,8 @@ export default function GestionVehiculos() {
   const [blTarget,  setBlTarget]  = useState(null);
   const [detail,    setDetail]    = useState(null);
   const [toggling,  setToggling]  = useState(null);
+  const [page,      setPage]      = useState(1);
+  const PER_PAGE = 20;
 
   const load = useCallback(async () => {
     try {
@@ -377,6 +379,12 @@ export default function GestionVehiculos() {
     }
     return true;
   });
+
+  const totalPages = Math.ceil(filtered.length / PER_PAGE);
+  const paginated  = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
+
+  const handleFilter = (setter) => (e) => { setter(e.target.value); setPage(1); };
+  const handleSearch = (e) => { setSearch(e.target.value); setPage(1); };
 
   const blCount   = vehicles.filter(v => v.blacklisted).length;
   const authCount = vehicles.filter(v => v.is_authorized).length;
@@ -426,25 +434,25 @@ export default function GestionVehiculos() {
                   </div>
                   <input className="form-control form-control-sm"
                     placeholder="Placa, nombre o modelo..."
-                    value={search} onChange={e => setSearch(e.target.value)}
+                    value={search} onChange={handleSearch}
                   />
                 </div>
 
                 <select className="form-control form-control-sm" style={{ maxWidth:140 }}
-                  value={filterRole} onChange={e => setFilterRole(e.target.value)}>
+                  value={filterRole} onChange={handleFilter(setFilterRole)}>
                   <option value="ALL">Todos los roles</option>
                   {Object.entries(ROL_ES).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
 
                 <select className="form-control form-control-sm" style={{ maxWidth:140 }}
-                  value={filterAuth} onChange={e => setFilterAuth(e.target.value)}>
+                  value={filterAuth} onChange={handleFilter(setFilterAuth)}>
                   <option value="ALL">Autorización: todos</option>
                   <option value="YES">Autorizados</option>
                   <option value="NO">No autorizados</option>
                 </select>
 
                 <select className="form-control form-control-sm" style={{ maxWidth:140 }}
-                  value={filterBL} onChange={e => setFilterBL(e.target.value)}>
+                  value={filterBL} onChange={handleFilter(setFilterBL)}>
                   <option value="ALL">Blacklist: todos</option>
                   <option value="YES">En blacklist</option>
                   <option value="NO">Sin blacklist</option>
@@ -502,7 +510,7 @@ export default function GestionVehiculos() {
                         </td>
                       </tr>
                     ) : (
-                      filtered.map(v => (
+                      paginated.map(v => (
                         <tr key={v.id} style={ v.blacklisted ? { background:"rgba(219,40,40,0.04)" } : {} }>
                           <td>
                             <strong style={{ color:"#800020", fontSize:14 }}>{v.placa}</strong>
@@ -575,13 +583,23 @@ export default function GestionVehiculos() {
               </div>
             </div>
             {filtered.length > 0 && (
-              <div className="card-footer" style={{ fontSize:12, color:"#7d8490", padding:"0.65rem 1.25rem" }}>
-                Mostrando {filtered.length} de {vehicles.length} vehículos ·
-                {blCount > 0 && (
-                  <span style={{ color:"#db2828", marginLeft:8 }}>
-                    <i className="fa fa-ban" style={{ marginRight:4 }} />
-                    {blCount} en blacklist
-                  </span>
+              <div className="card-footer" style={{ display:"flex", alignItems:"center", justifyContent:"space-between", flexWrap:"wrap", gap:8, fontSize:12, color:"#7d8490", padding:"0.65rem 1.25rem" }}>
+                <span>
+                  Mostrando {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} de {filtered.length} vehículos
+                  {blCount > 0 && (
+                    <span style={{ color:"#db2828", marginLeft:8 }}>
+                      <i className="fa fa-ban" style={{ marginRight:4 }} />{blCount} en blacklist
+                    </span>
+                  )}
+                </span>
+                {totalPages > 1 && (
+                  <div style={{ display:"flex", gap:4, alignItems:"center" }}>
+                    <button className="btn btn-sm btn-default" disabled={page === 1} onClick={() => setPage(1)}><i className="fa fa-angle-double-left" /></button>
+                    <button className="btn btn-sm btn-default" disabled={page === 1} onClick={() => setPage(p => p - 1)}><i className="fa fa-angle-left" /></button>
+                    <span style={{ padding:"0 8px" }}>Pág. {page} / {totalPages}</span>
+                    <button className="btn btn-sm btn-default" disabled={page === totalPages} onClick={() => setPage(p => p + 1)}><i className="fa fa-angle-right" /></button>
+                    <button className="btn btn-sm btn-default" disabled={page === totalPages} onClick={() => setPage(totalPages)}><i className="fa fa-angle-double-right" /></button>
+                  </div>
                 )}
               </div>
             )}
