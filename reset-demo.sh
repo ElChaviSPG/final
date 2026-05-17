@@ -10,6 +10,19 @@ YELLOW='\033[1;33m'
 BOLD='\033[1m'
 RESET='\033[0m'
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/webapp/.env.local"
+
+# Cargar DATABASE_URL del .env.local
+if [ -f "$ENV_FILE" ]; then
+  export $(grep -E '^DATABASE_URL=' "$ENV_FILE" | xargs)
+fi
+
+if [ -z "$DATABASE_URL" ]; then
+  echo -e "\n  ${RED}✗ No se encontró DATABASE_URL en webapp/.env.local${RESET}\n"
+  exit 1
+fi
+
 echo ""
 echo -e "${BOLD}╔══════════════════════════════════════════════════╗${RESET}"
 echo -e "${BOLD}║     Reset Demo — Sistema de Parqueo USPG         ║${RESET}"
@@ -29,8 +42,8 @@ echo ""
 echo -ne "  Limpiando base de datos..."
 
 node -e "
-const { PrismaClient } = require('./webapp/node_modules/@prisma/client');
-const prisma = new PrismaClient();
+const { PrismaClient } = require('$SCRIPT_DIR/webapp/node_modules/@prisma/client');
+const prisma = new PrismaClient({ datasources: { db: { url: process.env.DATABASE_URL } } });
 
 async function main() {
   await prisma.payment.deleteMany();
@@ -42,9 +55,10 @@ async function main() {
   await prisma.notification.deleteMany();
   await prisma.parkingSpace.updateMany({ data: { status: 'AVAILABLE' } });
   await prisma.\$disconnect();
+  console.log('OK');
 }
-main().catch(e => { console.error(e); process.exit(1); });
-" 2>/dev/null
+main().catch(e => { console.error(e.message); process.exit(1); });
+"
 
 if [ $? -eq 0 ]; then
   echo -e " ${GREEN}✓${RESET}"
