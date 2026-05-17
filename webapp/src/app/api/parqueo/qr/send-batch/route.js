@@ -52,9 +52,11 @@ export async function POST(request) {
       `);
     }
 
+    const recipient = process.env.RESEND_TO_OVERRIDE || email;
+
     const { error } = await resend.emails.send({
       from:    "Parqueo USPG <onboarding@resend.dev>",
-      to:      [email],
+      to:      [recipient],
       subject: `${reservations.length} QR${reservations.length > 1 ? "s" : ""} de reserva — Parqueo USPG`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:560px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #e5e5e5;">

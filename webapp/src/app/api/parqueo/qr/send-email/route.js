@@ -31,9 +31,11 @@ export async function POST(request) {
 
     const qrBuffer = Buffer.from(qrBase64.replace(/^data:image\/png;base64,/, ""), "base64");
 
+    const recipient = process.env.RESEND_TO_OVERRIDE || email;
+
     const { error } = await resend.emails.send({
       from:    "Parqueo USPG <onboarding@resend.dev>",
-      to:      [email],
+      to:      [recipient],
       subject: `QR de reserva — Espacio ${reservation.spaceCode}`,
       html: `
         <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:32px 24px;background:#fff;border-radius:12px;border:1px solid #e5e5e5;">
