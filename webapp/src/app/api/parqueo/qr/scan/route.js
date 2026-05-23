@@ -198,7 +198,7 @@ export async function POST(request) {
 
       const [session] = await prisma.$transaction(txOps);
 
-      await anclarAudit({
+      const blockchainResult = await anclarAudit({
         sessionId: session.id,
         action: 'ENTRY',
         data: { placa: vehicle.placa, space_code: space.code, zone: space.zone, entry_time: session.entry_time },
@@ -215,6 +215,7 @@ export async function POST(request) {
         evento: activeEvent?.name ?? null,
         suscripcion: !!activeSub,
         reserva: usedReservation ? { id: usedReservation.id, type: usedReservation.type } : null,
+        blockchain: blockchainResult ?? null,
       });
     }
 
