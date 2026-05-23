@@ -1,10 +1,15 @@
-import { getLaboratorios } from './actions'
-import LaboratoriosClient from './LaboratoriosClient'
+import { getDashboardData, getUsuariosSelect } from './actions'
+import { serialize } from '@/lib/serialize'
+import LaboratoriosDashboard from './LaboratoriosDashboard'
 
-export const dynamic = 'force-dynamic'; // Aseguramos que los datos se actualicen
+export const dynamic = 'force-dynamic'
 
 export default async function LaboratoriosPage() {
-  const laboratorios = await getLaboratorios()
-  
-  return <LaboratoriosClient laboratorios={laboratorios} />
+  const [data, usuarios] = await Promise.all([getDashboardData(), getUsuariosSelect()])
+
+  return (
+    <LaboratoriosDashboard
+      initialData={serialize({ ...data, usuarios })}
+    />
+  )
 }
