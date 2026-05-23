@@ -143,9 +143,9 @@ export default function ParqueoDashboard() {
         fill: { type: "gradient", gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.05 } },
         stroke: { curve: "smooth", width: 2 },
         dataLabels: { enabled: false },
-        grid: { borderColor: "rgba(255,255,255,0.05)" },
-        tooltip: { theme: "dark" },
-        theme: { mode: "dark" },
+        grid: { borderColor: "rgba(0,0,0,0.06)" },
+        tooltip: { theme: "light" },
+        theme: { mode: "light" },
       });
       chartInstance.current.render();
     };
