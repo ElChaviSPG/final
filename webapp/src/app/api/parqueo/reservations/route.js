@@ -14,7 +14,12 @@ export async function POST(request) {
     const start = new Date(dto.start_time);
     const end = new Date(dto.end_time);
     if (end <= start) return res.error('La hora de fin debe ser posterior al inicio');
-    if (start < new Date()) return res.error('No se puede reservar en el pasado');
+    // Reservas de tipo EVENT pueden tener inicio en el pasado (evento ya empezó)
+    // Para otras: tolerancia de 2 min por latencia de red
+    if (dto.type !== 'EVENT' && start < new Date(Date.now() - 120_000)) {
+      return res.error('No se puede reservar en el pasado');
+    }
+    if (end < new Date()) return res.error('La hora de fin ya pasó');
 
     const space = await prisma.parkingSpace.findUnique({ where: { id: dto.space_id } });
     if (!space) return res.notFound('Espacio no encontrado');
@@ -48,9 +53,11 @@ export async function POST(request) {
       include: { space: true, vehicle: true },
     });
 
-    // Solo bloquear el espacio si la reserva empieza dentro de los próximos 30 minutos
+    // Bloquear espacio:
+    // - Eventos: siempre marcar RESERVED (el admin bloqueó el espacio intencionalmente)
+    // - Otros: solo si empieza en los próximos 30 min
     const minutesUntilStart = (start - Date.now()) / 60000;
-    if (minutesUntilStart <= 30) {
+    if (dto.type === 'EVENT' || minutesUntilStart <= 30) {
       await prisma.parkingSpace.update({ where: { id: dto.space_id }, data: { status: 'RESERVED' } });
     }
 

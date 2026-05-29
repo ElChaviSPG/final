@@ -36,6 +36,14 @@ const ACTION_ES = {
 };
 const fmtAction = (s) => ACTION_ES[s] ?? (s || "—").replace(/_/g, " ");
 
+const REASON_ES = {
+  BLACKLISTED:    "Lista negra",
+  UNAUTHORIZED:   "No autorizado",
+  INVALID_QR:     "QR inválido",
+  EXPIRED_PASS:   "Pase expirado",
+  NOT_REGISTERED: "No registrado",
+};
+
 const SEVERITY = {
   HIGH:   { cls:"badge-danger",   color:"#db2828", label:"Alto"  },
   MEDIUM: { cls:"badge-warning",  color:"#fbbd08", label:"Medio" },
@@ -62,7 +70,7 @@ function RemoveBlacklistModal({ vehicle, onClose, onDone }) {
       await api.delete(`/vehicles/${vehicle.id}/blacklist`);
       onDone();
     } catch (e) {
-      setError(e.response?.data?.message || "Error al remover de blacklist.");
+      setError(e.response?.data?.message || "Error al remover de lista negra.");
     } finally {
       setLoading(false);
     }
@@ -79,9 +87,9 @@ function RemoveBlacklistModal({ vehicle, onClose, onDone }) {
           <div className="modal-header">
             <h5 className="modal-title" style={{ color:"#21ba45" }}>
               <i className="fa fa-check-circle" style={{ marginRight:8 }} />
-              Remover de blacklist
+              Remover de lista negra
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div style={{
@@ -140,21 +148,30 @@ export default function Seguridad() {
   // Alertas activas
   const [alerts,      setAlerts]      = useState([]);
 
+  // Blockchain
+  const [chain,       setChain]       = useState([]);
+  const [chainStats,  setChainStats]  = useState({ total:0, confirmed:0, failed:0 });
+  const [chainPage,   setChainPage]   = useState(1);
+  const [chainTotal,  setChainTotal]  = useState(0);
+
   const [loading,     setLoading]     = useState(true);
   const [activeTab,   setActiveTab]   = useState("logs");
 
   const PER_PAGE = 20;
 
   const load = useCallback(async () => {
+    // eslint-disable-next-line
     setLoading(true);
     try {
       const auditParams = new URLSearchParams({ page: logsPage, limit: PER_PAGE });
       if (filterType !== "ALL") auditParams.set("action", filterType);
-      const [logsRes, blRes, failRes, alertRes] = await Promise.allSettled([
+      const chainParams = new URLSearchParams({ page: chainPage, limit: 20 });
+      const [logsRes, blRes, failRes, alertRes, chainRes] = await Promise.allSettled([
         api.get(`/security/audit?${auditParams.toString()}`),
         api.get("/vehicles?blacklisted=true&limit=200"),
         api.get("/security/failed-attempts?limit=50"),
         api.get("/dashboard/alerts"),
+        api.get(`/blockchain?${chainParams.toString()}`),
       ]);
 
       if (logsRes.status === "fulfilled") {
@@ -183,10 +200,17 @@ export default function Seguridad() {
       if (alertRes.status === "fulfilled") {
         setAlerts(alertRes.value.data.data?.alerts || []);
       }
+
+      if (chainRes.status === "fulfilled") {
+        const cd = chainRes.value.data.data;
+        setChain(cd?.data || []);
+        setChainTotal(cd?.total || 0);
+        setChainStats({ total: cd?.total || 0, confirmed: cd?.confirmed || 0, failed: cd?.failed || 0 });
+      }
     } finally {
       setLoading(false);
     }
-  }, [logsPage, filterSev, filterType, logSearch]);
+  }, [logsPage, filterSev, filterType, logSearch, chainPage]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -272,9 +296,10 @@ export default function Seguridad() {
         <div className="col-12">
           <ul className="nav nav-tabs" style={{ borderBottom:"2px solid rgba(255,255,255,0.08)", marginBottom:"1rem" }}>
             {[
-              { id:"logs",     label:"Log de auditoría",    icon:"fa-list-alt"    },
-              { id:"blacklist",label:"Blacklist",            icon:"fa-ban"         },
-              { id:"failed",   label:"Intentos fallidos",   icon:"fa-times-circle"},
+              { id:"logs",       label:"Log de auditoría",    icon:"fa-list-alt"    },
+              { id:"blacklist",  label:"Lista negra",           icon:"fa-ban"         },
+              { id:"failed",     label:"Intentos fallidos",   icon:"fa-times-circle"},
+              { id:"blockchain", label:"Blockchain",           icon:"fa-link"        },
             ].map(t => (
               <li className="nav-item" key={t.id}>
                 <button
@@ -336,11 +361,11 @@ export default function Seguridad() {
                       value={filterType} onChange={e => { setFilterType(e.target.value); setLogsPage(1); }}>
                       <option value="ALL">Tipo de evento</option>
                       <option value="ACCESS_DENIED">Acceso denegado</option>
-                      <option value="BLACKLIST_ATTEMPT">Intento blacklist</option>
+                      <option value="BLACKLIST_ATTEMPT">Intento lista negra</option>
                       <option value="FORCED_ENTRY">Entrada forzada</option>
                       <option value="OVERSTAY">Tiempo excedido</option>
                       <option value="PAYMENT_FAILED">Pago fallido</option>
-                      <option value="MANUAL_OVERRIDE">Override manual</option>
+                      <option value="MANUAL_OVERRIDE">Anulación manual</option>
                     </select>
                     <button className="btn btn-default btn-sm" onClick={load}>
                       <i className="fa fa-refresh" />
@@ -505,7 +530,7 @@ export default function Seguridad() {
                       <tr>
                         <td colSpan={6} className="text-center" style={{ padding:"2.5rem", color:"#7d8490" }}>
                           <i className="fa fa-check-circle fa-2x" style={{ display:"block", marginBottom:8, color:"#21ba45" }} />
-                          Sin vehículos en blacklist
+                          Sin vehículos en lista negra
                         </td>
                       </tr>
                     ) : (
@@ -527,10 +552,10 @@ export default function Seguridad() {
                           <td style={{ fontSize:12, color:"#db2828", maxWidth:220 }}>
                             <span title={v.blacklist_reason}>{(v.blacklist_reason || "Sin motivo registrado").slice(0, 60)}{(v.blacklist_reason||"").length > 60 ? "…" : ""}</span>
                           </td>
-                          <td style={{ fontSize:12 }}>{fmt(v.blacklisted_at)}</td>
+                          <td style={{ fontSize:12 }}>{fmt(v.blacklist_entries?.[0]?.created_at)}</td>
                           <td style={{ textAlign:"center" }}>
                             <button className="btn btn-success btn-sm"
-                              title="Remover de blacklist"
+                              title="Remover de lista negra"
                               onClick={() => setBlTarget(v)}>
                               <i className="fa fa-check" style={{ marginRight:4 }} />
                               Remover
@@ -598,7 +623,7 @@ export default function Seguridad() {
                                      f.reason === "UNAUTHORIZED" ? "#fbbd08" : "#7d8490",
                               fontWeight: f.reason === "BLACKLISTED" ? 700 : 400,
                             }}>
-                              {(f.reason || f.reject_reason || "—").replace(/_/g," ")}
+                              {REASON_ES[f.reason || f.reject_reason] || (f.reason || f.reject_reason || "—").replace(/_/g," ")}
                             </span>
                           </td>
                           <td>
@@ -621,8 +646,164 @@ export default function Seguridad() {
                 <div className="card-footer" style={{ fontSize:12, color:"#7d8490", padding:"0.65rem 1.25rem" }}>
                   {failed.length} intentos fallidos ·
                   <span style={{ color:"#db2828", marginLeft:6 }}>
-                    {failed.filter(f => f.reason === "BLACKLISTED").length} de vehículos en blacklist
+                    {failed.filter(f => f.reason === "BLACKLISTED").length} de vehículos en lista negra
                   </span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ══ TAB: Blockchain ══════════════════════════════════════════════════════ */}
+      {activeTab === "blockchain" && (
+        <div className="row clearfix">
+          <div className="col-12">
+
+            {/* Nota innovación */}
+            <div style={{
+              background:"linear-gradient(135deg,rgba(128,0,32,0.12),rgba(128,0,32,0.04))",
+              border:"1px solid rgba(128,0,32,0.25)", borderRadius:8,
+              padding:"12px 16px", marginBottom:16,
+              display:"flex", alignItems:"center", gap:12,
+            }}>
+              <i className="fa fa-link" style={{ fontSize:22, color:"#800020", flexShrink:0 }} />
+              <div>
+                <strong style={{ fontSize:13 }}>Auditoría inmutable en Polygon Amoy</strong>
+                <div style={{ fontSize:12, color:"#7d8490", marginTop:2 }}>
+                  Cada entrada y salida registrada por QR queda anclada en la blockchain como prueba
+                  de auditoría pública. El hash SHA-256 garantiza que los datos no fueron alterados.
+                </div>
+              </div>
+            </div>
+
+            {/* Stats */}
+            <div className="row clearfix" style={{ marginBottom:16 }}>
+              {[
+                { label:"Total registros", value: chainStats.total,     color:"#800020", icon:"fa-database"     },
+                { label:"Confirmados",     value: chainStats.confirmed, color:"#21ba45", icon:"fa-check-circle" },
+                { label:"Fallidos",        value: chainStats.failed,    color:"#db2828", icon:"fa-times-circle" },
+              ].map(({ label, value, color, icon }) => (
+                <div className="col-lg-4 col-md-4 col-sm-12" key={label}>
+                  <div className="card" style={{ borderLeft:`4px solid ${color}`, marginBottom:"1rem" }}>
+                    <div className="card-body" style={{ display:"flex", alignItems:"center", gap:"1rem", padding:"1rem" }}>
+                      <div style={{ width:40, height:40, borderRadius:"50%", background:`${color}20`, display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+                        <i className={`fa ${icon}`} style={{ color, fontSize:18 }} />
+                      </div>
+                      <div>
+                        <div style={{ fontSize:24, fontWeight:700, lineHeight:1 }}>{value}</div>
+                        <div style={{ fontSize:12, color:"#7d8490", marginTop:2 }}>{label}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Tabla */}
+            <div className="card">
+              <div className="card-header" style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                <h3 className="card-title">
+                  <i className="fa fa-link" style={{ marginRight:6 }} />
+                  Registros anclados
+                </h3>
+                <span className="badge" style={{ background:"rgba(128,0,32,0.15)", color:"#800020", padding:"4px 10px", borderRadius:12, fontSize:11, fontWeight:700 }}>
+                  <i className="fa fa-circle" style={{ marginRight:4, color:"#21ba45", fontSize:8 }} />
+                  Polygon Amoy Testnet
+                </span>
+              </div>
+              <div className="card-body" style={{ padding:0 }}>
+                {chain.length === 0 ? (
+                  <div style={{ textAlign:"center", padding:"3rem", color:"#7d8490" }}>
+                    <i className="fa fa-link fa-2x" style={{ display:"block", marginBottom:10, color:"#343a40" }} />
+                    <span style={{ fontSize:13 }}>
+                      Sin registros aún — aparecerán aquí cuando se procesen entradas o salidas por QR
+                    </span>
+                  </div>
+                ) : (
+                  <div className="table-responsive">
+                    <table className="table table-hover table-sm mb-0" style={{ fontSize:12 }}>
+                      <thead>
+                        <tr style={{ background:"rgba(128,0,32,0.08)" }}>
+                          <th>Fecha</th>
+                          <th>Placa</th>
+                          <th>Acción</th>
+                          <th>SHA-256 datos</th>
+                          <th>TX Hash (Polygon)</th>
+                          <th>Estado</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {chain.map(r => (
+                          <tr key={r.id}>
+                            <td style={{ whiteSpace:"nowrap" }}>
+                              {new Date(r.created_at).toLocaleString("es-GT", { day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit" })}
+                            </td>
+                            <td>
+                              <strong style={{ color:"#800020" }}>
+                                {r.session?.vehicle?.placa ?? "—"}
+                              </strong>
+                            </td>
+                            <td>
+                              <span className={`badge ${r.action === "ENTRY" ? "badge-success" : "badge-warning"}`}>
+                                <i className={`fa ${r.action === "ENTRY" ? "fa-sign-in" : "fa-sign-out"}`} style={{ marginRight:4 }} />
+                                {r.action === "ENTRY" ? "Entrada" : "Salida"}
+                              </span>
+                            </td>
+                            <td>
+                              <span style={{ fontFamily:"monospace", fontSize:11, color:"#7d8490" }}>
+                                {r.data_hash ? r.data_hash.slice(0, 14) + "…" : "—"}
+                              </span>
+                            </td>
+                            <td>
+                              {r.tx_hash ? (
+                                <a
+                                  href={`https://amoy.polygonscan.com/tx/${r.tx_hash}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  style={{ fontFamily:"monospace", fontSize:11, color:"#17a2b8" }}
+                                >
+                                  {r.tx_hash.slice(0, 10)}…
+                                  <i className="fa fa-external-link" style={{ marginLeft:4, fontSize:9 }} />
+                                </a>
+                              ) : (
+                                <span style={{ color:"#7d8490", fontSize:11 }}>—</span>
+                              )}
+                            </td>
+                            <td>
+                              {r.status === "CONFIRMED" ? (
+                                <span style={{ color:"#21ba45", fontSize:11, fontWeight:600 }}>
+                                  <i className="fa fa-check-circle" style={{ marginRight:4 }} />Confirmado
+                                </span>
+                              ) : (
+                                <span style={{ color:"#db2828", fontSize:11, fontWeight:600 }}>
+                                  <i className="fa fa-times-circle" style={{ marginRight:4 }} />Fallido
+                                </span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* Paginación */}
+              {chainTotal > 20 && (
+                <div className="card-footer" style={{ display:"flex", justifyContent:"space-between", alignItems:"center", fontSize:12, color:"#7d8490", padding:"0.65rem 1.25rem" }}>
+                  <span>{chainTotal} registros totales</span>
+                  <div style={{ display:"flex", gap:6 }}>
+                    <button className="btn btn-xs btn-default" disabled={chainPage <= 1}
+                      onClick={() => setChainPage(p => p - 1)}>
+                      <i className="fa fa-chevron-left" />
+                    </button>
+                    <span style={{ padding:"2px 8px" }}>Pág. {chainPage} / {Math.ceil(chainTotal / 20)}</span>
+                    <button className="btn btn-xs btn-default" disabled={chainPage >= Math.ceil(chainTotal / 20)}
+                      onClick={() => setChainPage(p => p + 1)}>
+                      <i className="fa fa-chevron-right" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

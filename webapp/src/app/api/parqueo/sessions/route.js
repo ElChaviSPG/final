@@ -1,6 +1,22 @@
 import prisma from '@/lib/prisma';
 import * as res from '@/lib/response';
 
+function generateSessionCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sin O,0,I,1 para evitar confusión
+  let code = '';
+  for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function uniqueSessionCode() {
+  for (let i = 0; i < 10; i++) {
+    const code = generateSessionCode();
+    const exists = await prisma.parkingSession.findUnique({ where: { session_code: code } });
+    if (!exists) return code;
+  }
+  throw new Error('No se pudo generar código único');
+}
+
 export async function POST(request) {
   try {
     const dto = await request.json();
@@ -29,7 +45,10 @@ export async function POST(request) {
       where: { user_id: vehicle.user_id, status: 'ACTIVE', end_date: { gt: now } },
     }) : null;
 
+    const session_code = await uniqueSessionCode();
+
     const sessionData = {
+      session_code,
       vehicle_id: dto.vehicle_id,
       space_id: dto.space_id,
       user_id: vehicle.user_id,

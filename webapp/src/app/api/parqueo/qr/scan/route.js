@@ -2,6 +2,18 @@ import prisma from '@/lib/prisma';
 import * as res from '@/lib/response';
 import { anclarAudit } from '@/lib/blockchain';
 
+// ── Genera código de sesión único (6 chars, sin O/0/I/1) ──────────────────────
+async function uniqueSessionCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  for (let i = 0; i < 10; i++) {
+    let code = '';
+    for (let j = 0; j < 6; j++) code += chars[Math.floor(Math.random() * chars.length)];
+    const exists = await prisma.parkingSession.findUnique({ where: { session_code: code } });
+    if (!exists) return code;
+  }
+  throw new Error('No se pudo generar código de sesión único');
+}
+
 async function getTariff(role) {
   try {
     const t = await prisma.tariffConfig.findUnique({ where: { role } });
@@ -103,11 +115,20 @@ export async function POST(request) {
           ]);
         }
 
-        await anclarAudit({
+        const blockchainResult = await anclarAudit({
           sessionId: activeSession.id,
           action: 'EXIT',
           data: { placa: vehicle.placa, duration_minutes, amount_due, is_paid, exit_time },
         });
+        await prisma.blockchainAudit.create({
+          data: {
+            session_id: activeSession.id,
+            action: 'EXIT',
+            data_hash: blockchainResult?.dataHash ?? '',
+            tx_hash: blockchainResult?.txHash ?? null,
+            status: blockchainResult ? 'CONFIRMED' : 'FAILED',
+          },
+        }).catch(() => {});
 
         return res.ok({
           action: 'EXIT',
@@ -122,6 +143,7 @@ export async function POST(request) {
           is_paid,
           evento: activeEvent?.name ?? null,
           suscripcion: !!activeSub,
+          blockchain: blockchainResult ?? null,
         });
       }
 
@@ -164,6 +186,7 @@ export async function POST(request) {
       ]);
 
       const sessionData = {
+        session_code: await uniqueSessionCode(),
         vehicle_id: vehicle.id,
         space_id: space.id,
         user_id: user.id,
@@ -203,6 +226,15 @@ export async function POST(request) {
         action: 'ENTRY',
         data: { placa: vehicle.placa, space_code: space.code, zone: space.zone, entry_time: session.entry_time },
       });
+      await prisma.blockchainAudit.create({
+        data: {
+          session_id: session.id,
+          action: 'ENTRY',
+          data_hash: blockchainResult?.dataHash ?? '',
+          tx_hash: blockchainResult?.txHash ?? null,
+          status: blockchainResult ? 'CONFIRMED' : 'FAILED',
+        },
+      }).catch(() => {});
 
       return res.ok({
         action: 'ENTRY',
@@ -317,9 +349,11 @@ export async function POST(request) {
         });
       }
 
+      const visitorSessionCode = await uniqueSessionCode();
       const [session] = await prisma.$transaction([
         prisma.parkingSession.create({
           data: {
+            session_code: visitorSessionCode,
             vehicle_id: vehicle.id,
             space_id: space.id,
             entry_method: 'VISITOR_QR',

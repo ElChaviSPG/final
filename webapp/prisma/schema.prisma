@@ -178,6 +178,7 @@ model Vehicle {
   model            String?
   color            String?
   year             Int?
+  vehicle_type     VehicleType @default(STANDARD)
   is_authorized    Boolean   @default(true)
   blacklisted      Boolean   @default(false)
   blacklist_reason String?
@@ -221,6 +222,7 @@ model ParkingSpace {
 
 model ParkingSession {
   id               String        @id @default(uuid())
+  session_code     String        @unique
   vehicle_id       String
   space_id         String
   user_id          String?
@@ -242,10 +244,12 @@ model ParkingSession {
   user     User?        @relation(fields: [user_id], references: [id])
   payment  Payment?
   visitor_qr VisitorQR?
+  blockchain_audits BlockchainAudit[]
 
   @@index([status])
   @@index([vehicle_id])
   @@index([entry_time])
+  @@index([session_code])
 }
 
 model Payment {
@@ -405,8 +409,18 @@ model TariffConfig {
 
 // ── Nuevos modelos — Tarea 1 ──────────────────────────────────────────────────
 
+enum VehicleType {
+  STANDARD
+  MOTORCYCLE
+  HANDICAPPED
+  ELECTRIC
+  VIP
+  TEACHER
+}
+
 enum SubscriptionType {
   MONTHLY
+  TRIMESTRAL
   SEMESTER
 }
 
@@ -528,4 +542,21 @@ model CardReplacement {
 
   user         User  @relation("CardUser", fields: [user_id], references: [id])
   processed_by User? @relation("CardProcessor", fields: [processed_by_user_id], references: [id])
+}
+
+model BlockchainAudit {
+  id         String   @id @default(uuid())
+  session_id String
+  action     String
+  data_hash  String
+  tx_hash    String?
+  network    String   @default("polygon-amoy")
+  status     String   @default("CONFIRMED")
+  created_at DateTime @default(now())
+
+  session ParkingSession @relation(fields: [session_id], references: [id])
+
+  @@index([session_id])
+  @@index([created_at])
+  @@index([status])
 }

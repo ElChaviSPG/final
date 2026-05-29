@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "@/lib/api";
+import QRCode from "qrcode";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const fmt = (d) =>
@@ -39,11 +40,17 @@ function MetodoBadge({ method }) {
 }
 
 // ── Modal ticket / QR ─────────────────────────────────────────────────────────
-function TicketModal({ session, onClose }) {
+function TicketModal({ session, rate = 5, onClose }) {
+  const canvasRef = useRef(null);
   if (!session) return null;
   const minutes = Math.floor((Date.now() - new Date(session.entry_time).getTime()) / 60000);
-  const total   = ((minutes / 60) * 5).toFixed(2);
+  const total   = ((minutes / 60) * rate).toFixed(2);
   const qrData  = `USPG-PARQUEO|${session.id}|${session.vehicle?.placa}|${session.space?.code}`;
+
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, qrData, { width: 160, margin: 1, color: { dark: "#1a1a2e", light: "#ffffff" } });
+  }, [qrData]);
 
   return (
     <div className="modal" style={{
@@ -58,20 +65,14 @@ function TicketModal({ session, onClose }) {
               <i className="fa fa-ticket" style={{ marginRight: 8 }} />
               Ticket de sesión
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body" style={{ textAlign: "center" }}>
-            {/* QR simulado */}
             <div style={{
-              width: 160, height: 160, margin: "0 auto 16px",
-              background: "#fff", borderRadius: 8, padding: 12,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              flexDirection: "column", gap: 4,
+              display: "inline-block", padding: 8, background: "#fff",
+              borderRadius: 8, boxShadow: "0 2px 8px rgba(0,0,0,0.2)", marginBottom: 16,
             }}>
-              <i className="fa fa-qrcode" style={{ fontSize: 80, color: "#222" }} />
-              <div style={{ fontSize: 9, color: "#555", wordBreak: "break-all", lineHeight: 1.2 }}>
-                {session.id?.slice(0, 16)}…
-              </div>
+              <canvas ref={canvasRef} />
             </div>
 
             <table className="table table-sm" style={{ textAlign: "left" }}>
@@ -138,7 +139,7 @@ function SalidaModal({ session, onClose, onDone }) {
               <i className="fa fa-sign-out" style={{ marginRight: 8 }} />
               Confirmar salida
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div style={{
@@ -280,6 +281,7 @@ function PagoModal({ session, onClose, onPaid }) {
 export default function SesionesActivas() {
   const [sessions, setSessions]   = useState([]);
   const [loading, setLoading]     = useState(true);
+  const [tariffs, setTariffs]     = useState({});
   const [ticket, setTicket]       = useState(null);
   const [salida, setSalida]       = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -314,6 +316,14 @@ export default function SesionesActivas() {
     const t = setInterval(load, 15000);
     return () => clearInterval(t);
   }, [load]);
+
+  useEffect(() => {
+    api.get("/tariffs").then(r => {
+      const map = {};
+      (r.data.data || []).forEach(t => { map[t.role] = t; });
+      setTariffs(map);
+    }).catch(() => {});
+  }, []);
 
   const loadHistory = useCallback(async (page = 1) => {
     setHistoryLoad(true);
@@ -351,7 +361,18 @@ export default function SesionesActivas() {
   });
 
   // Totales para el resumen
-  const totalMonto = filtered.reduce((acc, s) => acc + parseFloat(monto(s.entry_time)), 0);
+  const sessionRate = (s) => {
+    const t = tariffs[s.user?.role];
+    if (!t) return 5;
+    if (t.is_free) {
+      if (!t.max_free_hours) return 0;
+      const hrs = (Date.now() - new Date(s.entry_time).getTime()) / 3600000;
+      return hrs <= t.max_free_hours ? 0 : t.hourly_rate;
+    }
+    return t.hourly_rate;
+  };
+
+  const totalMonto = filtered.reduce((acc, s) => acc + parseFloat(monto(s.entry_time, sessionRate(s))), 0);
 
   if (loading) return (
     <div className="text-center" style={{ padding: "3rem" }}>
@@ -514,7 +535,7 @@ export default function SesionesActivas() {
                             <strong style={{ color: "#17a2b8" }}>{dur(s.entry_time)}</strong>
                           </td>
                           <td style={{ fontWeight: 700, color: "#21ba45" }}>
-                            Q {monto(s.entry_time)}
+                            Q {monto(s.entry_time, sessionRate(s))}
                           </td>
                           <td><MetodoBadge method={s.entry_method} /></td>
                           <td><PagoBadge paid={s.is_paid} /></td>
@@ -670,7 +691,7 @@ export default function SesionesActivas() {
       </div>
 
       {/* ── Modals ────────────────────────────────────────────────────────────── */}
-      {ticket && <TicketModal session={ticket} onClose={() => setTicket(null)} />}
+      {ticket && <TicketModal session={ticket} rate={sessionRate(ticket)} onClose={() => setTicket(null)} />}
       {salida && <SalidaModal session={salida} onClose={() => setSalida(null)} onDone={handleSalidaDone} />}
       {pagoTarget && (
         <PagoModal

@@ -56,7 +56,7 @@ export async function POST(request) {
     if (existing) return res.conflict('El usuario ya tiene una suscripción activa');
 
     const start = new Date(dto.start_date ?? Date.now());
-    const days = dto.type === 'SEMESTER' ? 180 : 30;
+    const days = dto.type === 'SEMESTER' ? 180 : dto.type === 'TRIMESTRAL' ? 90 : 30;
     const end_date = new Date(start.getTime() + days * 86400000);
 
     const subscription = await prisma.parkingSubscription.create({

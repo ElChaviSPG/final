@@ -1,6 +1,17 @@
 "use client";
 import { useState } from "react";
 
+// Misma lógica que mapa/page.js → asigna cada espacio al sub-parqueo correcto
+function parqueoIdOfSpace(sp) {
+  const num = parseInt((sp.code || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const half = Math.floor(125 / 2); // 62
+  if (sp.zone === "A") return num <= half ? "P5" : "P1"; // Norte / Oeste
+  if (sp.zone === "B") return num <= half ? "P2" : "P6"; // Sur / Este
+  if (sp.zone === "C") return "P3";
+  if (sp.zone === "D") return "P4";
+  return null;
+}
+
 const PARQUEOS = [
   { id: "P5", zone: "A", label: "Zona A · Norte", pts: "631.613,17.504 714.758,62.724 612.65,195.464 526.587,134.199", lx: 621, ly: 102 },
   { id: "P1", zone: "A", label: "Zona A · Oeste", pts: "224.638,627.236 423.02,285.903 504.707,339.875 309.242,681.208", lx: 365, ly: 483 },
@@ -25,6 +36,9 @@ function SpacePickerPanel({ parqueo, spaces, selectedCodes, onToggle, onClose })
     if (sp.status === "MAINTENANCE")     return "#7d8490";
     return "#21ba45";
   };
+  // RESERVED también es no-seleccionable (ya está bloqueado por otra reserva)
+  const isUnavailable = (sp) =>
+    sp.status === "OCCUPIED" || sp.status === "MAINTENANCE" || sp.status === "RESERVED";
 
   return (
     <div style={{
@@ -48,7 +62,7 @@ function SpacePickerPanel({ parqueo, spaces, selectedCodes, onToggle, onClose })
         ) : spaces.map(sp => {
           const num = sp.code.split("-")[1] || sp.code;
           const isSelected = selectedCodes.includes(sp.code);
-          const unavailable = sp.status === "OCCUPIED" || sp.status === "MAINTENANCE";
+          const unavailable = isUnavailable(sp);
           return (
             <div key={sp.id}
               onClick={() => !unavailable && onToggle(sp.code)}
@@ -58,7 +72,7 @@ function SpacePickerPanel({ parqueo, spaces, selectedCodes, onToggle, onClose })
                 color: "#fff", borderRadius: 3, fontSize: 10, fontWeight: 700,
                 textAlign: "center", padding: "4px 2px",
                 cursor: unavailable ? "not-allowed" : "pointer",
-                opacity: unavailable ? 0.5 : 1,
+                opacity: unavailable ? 0.55 : 1,
                 outline: isSelected ? "2px solid #5a0016" : "none",
               }}>
               {isSelected ? "✓" : num}
@@ -68,7 +82,7 @@ function SpacePickerPanel({ parqueo, spaces, selectedCodes, onToggle, onClose })
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px 8px", fontSize: 10, color: "#666" }}>
-        {[["#21ba45","Disponible"],["#800020","Seleccionado"],["#db2828","Ocupado"],["#fbbd08","Reservado"]].map(([c,l]) => (
+        {[["#21ba45","Disponible"],["#800020","Seleccionado"],["#db2828","Ocupado"],["#fbbd08","Reservado (bloqueado)"]].map(([c,l]) => (
           <span key={l} style={{ display: "flex", alignItems: "center", gap: 4 }}>
             <span style={{ width: 10, height: 10, background: c, borderRadius: 2, display: "inline-block", flexShrink: 0 }} />{l}
           </span>
@@ -78,10 +92,25 @@ function SpacePickerPanel({ parqueo, spaces, selectedCodes, onToggle, onClose })
   );
 }
 
+// Calcula stats por sub-parqueo desde los espacios reales
+function computeSubStats(spaces) {
+  const stats = {};
+  Object.values(spaces).flat().forEach(sp => {
+    const pid = parqueoIdOfSpace(sp);
+    if (!pid) return;
+    if (!stats[pid]) stats[pid] = { total: 0, available: 0 };
+    stats[pid].total++;
+    if (sp.status === "AVAILABLE") stats[pid].available++;
+  });
+  return stats;
+}
+
 export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes, onToggle }) {
   const [hovered,      setHovered]  = useState(null);
   const [activeParqueo, setActive]  = useState(null);
   const [tooltip,      setTooltip]  = useState({ x: 0, y: 0 });
+
+  const subStats = computeSubStats(spaces);
 
   const handleMove = (e) => {
     const r = e.currentTarget.getBoundingClientRect();
@@ -93,8 +122,10 @@ export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes,
 
   const hovP = PARQUEOS.find(p => p.id === hovered);
 
-  // Espacios para el parqueo activo (por zona)
-  const activeSpaces = activeParqueo ? (spaces[activeParqueo.zone] || []) : [];
+  // Espacios para el parqueo activo, filtrados al sub-parqueo exacto
+  const activeSpaces = activeParqueo
+    ? (spaces[activeParqueo.zone] || []).filter(sp => parqueoIdOfSpace(sp) === activeParqueo.id)
+    : [];
 
   return (
     <div style={{ position: "relative" }}>
@@ -113,12 +144,13 @@ export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes,
           preserveAspectRatio="xMidYMid slice" />
 
         {PARQUEOS.map(({ id, zone, label, pts, lx, ly }) => {
-          const zs   = zoneStats[zone] || {};
+          const ss    = subStats[id] || {};
           const isHov = hovered === id;
           const isAct = activeParqueo?.id === id;
 
-          // Contar seleccionados en esta zona
-          const selCount = (spaces[zone] || []).filter(s => selectedCodes.includes(s.code)).length;
+          // Contar seleccionados en este sub-parqueo
+          const selCount = (spaces[zone] || [])
+            .filter(s => parqueoIdOfSpace(s) === id && selectedCodes.includes(s.code)).length;
 
           return (
             <g key={id}
@@ -142,8 +174,8 @@ export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes,
                 {label}
               </text>
               <text x={lx} y={ly + 7} textAnchor="middle"
-                fill={zs.available > 0 ? "#7ef0a0" : "#ffbaba"} fontSize={11} fontWeight={600}>
-                {zs.total ?? "—"} espacios
+                fill={ss.available > 0 ? "#7ef0a0" : "#ffbaba"} fontSize={11} fontWeight={600}>
+                {ss.total ?? "—"} espacios
               </text>
               {selCount > 0 && (
                 <text x={lx} y={ly + 22} textAnchor="middle"
@@ -157,8 +189,9 @@ export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes,
 
         {/* Tooltip hover */}
         {hovP && (() => {
-          const zs   = zoneStats[hovP.zone] || {};
-          const pct  = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+          const ss   = subStats[hovP.id] || {};
+          const occupied = (ss.total || 0) - (ss.available || 0);
+          const pct  = ss.total ? Math.round((occupied / ss.total) * 100) : 0;
           const fill = zoneColor(pct);
           const tx   = Math.min(tooltip.x + 20, 1340);
           const ty   = Math.max(tooltip.y - 110, 8);
@@ -174,7 +207,7 @@ export default function CampusMapPicker({ spaces, zoneStats = {}, selectedCodes,
               </text>
               <text x={tx + 90} y={ty + 60} textAnchor="middle" fill="#aaa" fontSize={11}>ocupado</text>
               <text x={tx + 90} y={ty + 76} textAnchor="middle" fill="#888" fontSize={10}>
-                {zs.available ?? 0} libres · {zs.occupied ?? 0} ocupados
+                {ss.available ?? 0} libres · {occupied} ocupados/reservados
               </text>
             </g>
           );

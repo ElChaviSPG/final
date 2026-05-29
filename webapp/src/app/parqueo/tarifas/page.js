@@ -26,14 +26,6 @@ const ROL_COLOR = {
   SECURITY: "#4a4a4a",
 };
 
-const DEMO_TARIFFS = [
-  { id: "d1", role: "ADMIN",    hourly_rate: 0,  is_free: true,  max_free_hours: null },
-  { id: "d2", role: "TEACHER",  hourly_rate: 0,  is_free: true,  max_free_hours: 8    },
-  { id: "d3", role: "STUDENT",  hourly_rate: 5,  is_free: false, max_free_hours: null },
-  { id: "d4", role: "VISITOR",  hourly_rate: 10, is_free: false, max_free_hours: null },
-  { id: "d5", role: "SECURITY", hourly_rate: 0,  is_free: true,  max_free_hours: null },
-];
-
 export default function TarifasPage() {
   const [tariffs,  setTariffs]  = useState([]);
   const [loading,  setLoading]  = useState(true);
@@ -43,8 +35,8 @@ export default function TarifasPage() {
 
   useEffect(() => {
     api.get("/tariffs")
-      .then(r => setTariffs(r.data.data?.length ? r.data.data : DEMO_TARIFFS))
-      .catch(() => setTariffs(DEMO_TARIFFS))
+      .then(r => setTariffs(r.data.data || []))
+      .catch(() => setMsg({ type: "danger", text: "Error al cargar las tarifas. Recarga la página." }))
       .finally(() => setLoading(false));
   }, []);
 
@@ -254,25 +246,30 @@ export default function TarifasPage() {
                 )}
 
                 {/* Previsualización */}
-                <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: 12, marginBottom: 20, border: "1px solid rgba(255,255,255,0.08)" }}>
-                  <strong style={{ fontSize: 12, color: "#9e9e9e", display: "block", marginBottom: 6 }}>EJEMPLO DE COBRO</strong>
-                  {editing.is_free && !editing.max_free_hours && (
-                    <span style={{ color: "#4caf50" }}>2 horas → <strong>Q 0.00</strong> (gratis)</span>
-                  )}
-                  {editing.is_free && editing.max_free_hours && (
-                    <>
-                      <div style={{ color: "#4caf50" }}>
-                        {editing.max_free_hours} horas → <strong>Q 0.00</strong> (dentro del límite)
-                      </div>
-                      <div style={{ color: "#ef9a9a", marginTop: 4 }}>
-                        {editing.max_free_hours + 2} horas → <strong>Q {(2 * 5).toFixed(2)}</strong> (2h excedente × Q5.00 tarifa estudiante)
-                      </div>
-                    </>
-                  )}
-                  {!editing.is_free && (
-                    <span style={{ color: "#e0e0e0" }}>2 horas → <strong>Q {(2 * (editing.hourly_rate || 0)).toFixed(2)}</strong></span>
-                  )}
-                </div>
+                {(() => {
+                  const studentRate = parseFloat(tariffs.find(t => t.role === "STUDENT")?.hourly_rate ?? 5);
+                  return (
+                    <div style={{ background: "rgba(255,255,255,0.05)", borderRadius: 6, padding: 12, marginBottom: 20, border: "1px solid rgba(255,255,255,0.08)" }}>
+                      <strong style={{ fontSize: 12, color: "#9e9e9e", display: "block", marginBottom: 6 }}>EJEMPLO DE COBRO</strong>
+                      {editing.is_free && !editing.max_free_hours && (
+                        <span style={{ color: "#4caf50" }}>2 horas → <strong>Q 0.00</strong> (gratis)</span>
+                      )}
+                      {editing.is_free && editing.max_free_hours && (
+                        <>
+                          <div style={{ color: "#4caf50" }}>
+                            {editing.max_free_hours} horas → <strong>Q 0.00</strong> (dentro del límite)
+                          </div>
+                          <div style={{ color: "#ef9a9a", marginTop: 4 }}>
+                            {editing.max_free_hours + 2} horas → <strong>Q {(2 * studentRate).toFixed(2)}</strong> (2h excedente × Q{studentRate.toFixed(2)} tarifa estudiante)
+                          </div>
+                        </>
+                      )}
+                      {!editing.is_free && (
+                        <span style={{ color: "#e0e0e0" }}>2 horas → <strong>Q {(2 * (editing.hourly_rate || 0)).toFixed(2)}</strong></span>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Botones */}
                 <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>

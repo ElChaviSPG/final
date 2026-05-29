@@ -31,9 +31,21 @@ export async function PATCH(request, { params }) {
       data: { status: 'CANCELLED', updated_at: new Date() },
     });
 
-    await prisma.auditLog.create({
-      data: { user_id: user.sub, action: 'SUBSCRIPTION_CANCELLED', resource: 'parking_subscription', resource_id: id },
-    });
+    const typeLabel = sub.type === 'MONTHLY' ? 'mensual' : sub.type === 'TRIMESTRAL' ? 'trimestral' : 'semestral';
+    await Promise.all([
+      prisma.auditLog.create({
+        data: { user_id: user.sub, action: 'SUBSCRIPTION_CANCELLED', resource: 'parking_subscription', resource_id: id },
+      }),
+      prisma.notification.create({
+        data: {
+          user_id: sub.user_id,
+          type: 'SYSTEM_ALERT',
+          title: 'Suscripción de parqueo cancelada',
+          message: `Tu suscripción ${typeLabel} de parqueo fue cancelada. A partir de ahora se aplicará tarifa normal por uso.`,
+          metadata: { subscription_id: id, cancelled_by: user.sub },
+        },
+      }),
+    ]);
 
     return res.ok(updated, 'Suscripción cancelada');
   } catch (e) {

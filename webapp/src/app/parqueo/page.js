@@ -2,12 +2,7 @@
 import { useState, useEffect, useRef } from "react";
 import api from "@/lib/api";
 
-// ── Datos demo para la gráfica de tráfico ────────────────────────────────────
-function demoHourly() {
-  return Array.from({ length: 24 }, (_, h) =>
-    h < 6 ? 1 : h < 8 ? 10 + h * 3 : h < 12 ? 55 + (h - 8) * 8 : h < 14 ? 80 : h < 18 ? 60 - (h - 14) * 5 : 15
-  );
-}
+const EMPTY_HOURLY = new Array(24).fill(0);
 
 // ── Stat Card ────────────────────────────────────────────────────────────────
 function StatCard({ icon, label, value, sub, color, bg }) {
@@ -39,7 +34,7 @@ function StatusBadge({ status }) {
     COMPLETED: { label: "Completada", cls: "badge-secondary" },
     PAID:      { label: "Pagado",     cls: "badge-success" },
     PENDING:   { label: "Pendiente",  cls: "badge-warning" },
-    BLACKLIST: { label: "Blacklist",  cls: "badge-danger" },
+    BLACKLIST: { label: "Lista negra", cls: "badge-danger" },
   };
   const s = map[status] || { label: status, cls: "badge-secondary" };
   return <span className={`badge ${s.cls}`}>{s.label}</span>;
@@ -94,12 +89,12 @@ export default function ParqueoDashboard() {
         if (activityRes.status === "fulfilled") setActivity(activityRes.value.data.data?.recent_sessions || []);
         if (alertsRes.status  === "fulfilled") setAlerts(alertsRes.value.data.data?.alerts || []);
         const hourlyData = hourlyRes.status === "fulfilled"
-          ? (hourlyRes.value.data.data?.hourly_entries || [])
-          : demoHourly();
-        setHourly(hourlyData.length ? hourlyData : demoHourly());
+          ? (hourlyRes.value.data.data?.hourly_entries || EMPTY_HOURLY)
+          : EMPTY_HOURLY;
+        setHourly(hourlyData.length === 24 ? hourlyData : EMPTY_HOURLY);
       } catch (e) {
         console.error("Error cargando dashboard:", e);
-        setHourly(demoHourly());
+        setHourly(EMPTY_HOURLY);
       } finally {
         setLoading(false);
       }
@@ -205,7 +200,7 @@ export default function ParqueoDashboard() {
         />
         <StatCard
           icon="fa-exclamation-triangle" label="Alertas activas" value={alerts.length}
-          sub={al.blacklisted_vehicles ? `${al.blacklisted_vehicles} en blacklist` : "Sin incidentes"}
+          sub={al.blacklisted_vehicles ? `${al.blacklisted_vehicles} en lista negra` : "Sin incidentes"}
           color={alerts.length > 0 ? "#db2828" : "#fbbd08"} bg={alerts.length > 0 ? "rgba(219,40,40,0.12)" : "rgba(251,189,8,0.12)"}
         />
       </div>

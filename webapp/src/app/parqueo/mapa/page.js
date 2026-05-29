@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import api from "@/lib/api";
+import QRCode from "qrcode";
 
 // ── Colores por estado ────────────────────────────────────────────────────────
 const STATUS_COLOR = {
@@ -18,8 +19,9 @@ const TYPE_OVERRIDE = {
 };
 
 // ── Modal de detalle de espacio ───────────────────────────────────────────────
-function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
-  const [toggling, setToggling] = useState(false);
+function SpaceModal({ space, canManage, tariffs, onClose, onAssign, onStatusChange, onPayRequired }) {
+  const [toggling,  setToggling]  = useState(false);
+  const [exiting,   setExiting]   = useState(false);
   const [toggleMsg, setToggleMsg] = useState("");
 
   if (!space) return null;
@@ -29,7 +31,40 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
   const dur = session
     ? Math.floor((Date.now() - new Date(session.entry_time).getTime()) / 60000)
     : 0;
-  const monto = session ? ((dur / 60) * 5).toFixed(2) : "0.00";
+
+  const rate = (() => {
+    const t = tariffs?.[session?.user?.role];
+    if (!t) return 5;
+    if (t.is_free) {
+      if (!t.max_free_hours) return 0;
+      return (dur / 60) <= t.max_free_hours ? 0 : t.hourly_rate;
+    }
+    return t.hourly_rate;
+  })();
+  const monto = session ? ((dur / 60) * rate).toFixed(2) : "0.00";
+
+  const registerExit = async () => {
+    if (!session?.id) return;
+    setExiting(true); setToggleMsg("");
+    try {
+      // Primero calcular el monto sin confirmar (dry-run)
+      const r = await api.get(`/sessions/${session.id}/checkout`);
+      const calc = r.data.data;
+      if (calc.amount_due > 0 && !calc.is_paid) {
+        // Hay pago pendiente → abrir modal de pago; espacio NO se libera aún
+        onPayRequired?.({ ...calc, id: session.id, vehicle: session.vehicle, user: session.user });
+        onClose();
+      } else {
+        // Gratis o ya pagado → checkout directo
+        await api.post(`/sessions/${session.id}/checkout`, {});
+        onStatusChange?.();
+        onClose();
+      }
+    } catch (e) {
+      setToggleMsg(e.response?.data?.message || "Error al calcular salida.");
+      setExiting(false);
+    }
+  };
 
   const toggleMaintenance = async () => {
     setToggling(true); setToggleMsg("");
@@ -57,7 +92,7 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
               <i className="fa fa-map-marker" style={{ marginRight: 8 }} />
               Espacio {space.code} — Zona {space.zone}
             </h5>
-            <button type="button" className="close" onClick={onClose}><span>&times;</span></button>
+            <button type="button" style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -84,6 +119,14 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
                     <td><strong style={{ color: "#21ba45" }}>Q {monto}</strong></td></tr>
                 </tbody>
               </table>
+            ) : space.status === "RESERVED" ? (
+              <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
+                <i className="fa fa-calendar-times-o fa-3x" style={{ color: "#fbbd08", display: "block", marginBottom: 12 }} />
+                <p style={{ color: "#555", fontWeight: 600, marginBottom: 4 }}>Espacio reservado para evento</p>
+                <p style={{ color: "#7d8490", fontSize: 12, marginBottom: 0 }}>
+                  Este espacio está bloqueado y no puede asignarse.
+                </p>
+              </div>
             ) : isMaint ? (
               <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
                 <i className="fa fa-wrench fa-3x" style={{ color: "#7d8490", display: "block", marginBottom: 12 }} />
@@ -102,12 +145,20 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
           </div>
 
           <div className="modal-footer" style={{ borderTop: "1px solid rgba(255,255,255,0.08)", flexWrap: "wrap", gap: 6 }}>
-            {!isOccupied && !isMaint && (
+            {canManage && isOccupied && session && (
+              <button className="btn btn-danger btn-sm" onClick={registerExit} disabled={exiting}>
+                {exiting
+                  ? <i className="fa fa-spinner fa-spin" style={{ marginRight: 6 }} />
+                  : <i className="fa fa-sign-out" style={{ marginRight: 6 }} />}
+                Registrar salida
+              </button>
+            )}
+            {canManage && !isOccupied && !isMaint && space.status !== "RESERVED" && (
               <button className="btn btn-success btn-sm" onClick={() => onAssign(space)}>
                 <i className="fa fa-plus" style={{ marginRight: 6 }} />Asignar manualmente
               </button>
             )}
-            {!isOccupied && (
+            {canManage && !isOccupied && space.status !== "RESERVED" && (
               <button className="btn btn-warning btn-sm" onClick={toggleMaintenance} disabled={toggling}
                 style={{ background: isMaint ? "#21ba45" : "#fbbd08", borderColor: isMaint ? "#1a9438" : "#d4a007", color: "#fff" }}>
                 {toggling
@@ -115,6 +166,11 @@ function SpaceModal({ space, onClose, onAssign, onStatusChange }) {
                   : <i className={`fa ${isMaint ? "fa-check" : "fa-wrench"}`} style={{ marginRight: 6 }} />}
                 {isMaint ? "Marcar disponible" : "Poner en mantenimiento"}
               </button>
+            )}
+            {!canManage && (
+              <span style={{ fontSize: 11, color: "#7d8490", fontStyle: "italic" }}>
+                <i className="fa fa-lock" style={{ marginRight: 4 }} />Solo lectura
+              </span>
             )}
             <button className="btn btn-secondary btn-sm" onClick={onClose}>Cerrar</button>
           </div>
@@ -154,17 +210,227 @@ function PlacaInput({ value, onChange, placeholder = "P-123ABC", className = "fo
   );
 }
 
+// ── Modal pago post-salida (desde el mapa) ────────────────────────────────────
+const METODOS_PAGO = [
+  { value: "CASH",     label: "Efectivo",      icon: "fa-money"          },
+  { value: "CARD",     label: "Tarjeta",        icon: "fa-credit-card"    },
+  { value: "TRANSFER", label: "Transferencia",  icon: "fa-exchange"       },
+  { value: "QR",       label: "QR / Billetera", icon: "fa-qrcode"         },
+];
+
+function PagoMapaModal({ session, onClose, onDone }) {
+  const [metodo,  setMetodo]  = useState("CASH");
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+
+  if (!session) return null;
+  const monto = (session.amount_due ?? 0).toFixed(2);
+
+  const confirmar = async () => {
+    setLoading(true); setError("");
+    try {
+      // checkout atómico: exit + pago + liberar espacio
+      await api.post(`/sessions/${session.id}/checkout`, { payment_method: metodo });
+      onDone();
+    } catch (e) {
+      setError(e.response?.data?.message || "Error al procesar pago.");
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="modal" style={{ display:"flex", position:"fixed", inset:0, zIndex:1070,
+      background:"rgba(0,0,0,0.75)", alignItems:"center", justifyContent:"center" }}
+      onClick={onClose}>
+      <div className="modal-dialog" style={{ maxWidth:380, width:"100%", margin:0 }}
+        onClick={e => e.stopPropagation()}>
+        <div className="modal-content">
+          <div className="modal-header" style={{ borderBottom:"1px solid rgba(255,255,255,0.08)" }}>
+            <h5 className="modal-title" style={{ color:"#800020" }}>
+              <i className="fa fa-money" style={{ marginRight:8 }} />Cobrar pago
+            </h5>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
+          </div>
+          <div className="modal-body">
+            <div style={{ textAlign:"center", marginBottom:16 }}>
+              <div style={{ fontSize:36, fontWeight:800, color:"#800020" }}>Q {monto}</div>
+              <div style={{ fontSize:12, color:"#7d8490" }}>
+                {session.vehicle?.placa} · {session.user?.first_name} {session.user?.last_name}
+              </div>
+            </div>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8 }}>
+              {METODOS_PAGO.map(m => (
+                <button key={m.value}
+                  className={`btn btn-sm ${metodo === m.value ? "btn-primary" : "btn-outline-secondary"}`}
+                  style={{ fontWeight:600, padding:"10px 0",
+                    background: metodo===m.value ? "#800020" : undefined,
+                    borderColor: metodo===m.value ? "#800020" : undefined }}
+                  onClick={() => setMetodo(m.value)}>
+                  <i className={`fa ${m.icon}`} style={{ marginRight:6 }} />{m.label}
+                </button>
+              ))}
+            </div>
+            {error && <p style={{ color:"#db2828", fontSize:12, marginTop:8, marginBottom:0 }}>{error}</p>}
+          </div>
+          <div className="modal-footer" style={{ borderTop:"1px solid rgba(255,255,255,0.08)" }}>
+            <button className="btn btn-success" disabled={loading} onClick={confirmar}
+              style={{ background:"#21ba45", borderColor:"#1a9438", fontWeight:700 }}>
+              {loading ? <i className="fa fa-spinner fa-spin" style={{ marginRight:6 }} /> : <i className="fa fa-check" style={{ marginRight:6 }} />}
+              Confirmar pago Q {monto}
+            </button>
+            <button className="btn btn-secondary btn-sm" onClick={onClose}>Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Modal asignación manual ────────────────────────────────────────────────────
+function TicketEntradaModal({ session, space, onClose }) {
+  const canvasRef  = useRef(null);
+  const realEmail  = session?.user?.email && !session.user.email.includes("@uspg.local")
+    ? session.user.email : "";
+  const [email,    setEmail]    = useState(realEmail);
+  const [sending,  setSending]  = useState(false);
+  const [emailOk,  setEmailOk]  = useState(false);
+  const [emailErr, setEmailErr] = useState("");
+
+  useEffect(() => {
+    if (!canvasRef.current || !session?.session_code) return;
+    QRCode.toCanvas(canvasRef.current, session.session_code, {
+      width: 180, margin: 1, color: { dark: "#1a1a2e", light: "#ffffff" },
+    });
+  }, [session]);
+
+  const sendEmail = async () => {
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailErr("Ingresa un correo válido."); return;
+    }
+    setSending(true); setEmailErr("");
+    try {
+      const qrImageBase64 = canvasRef.current?.toDataURL("image/png") ?? null;
+      const now = new Date(session.entry_time ?? Date.now());
+      await fetch("/api/parqueo/qr/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          qrImageBase64,
+          reservation: {
+            id:                 session.session_code,
+            spaceCode:          space?.code ?? "—",
+            zone:               space?.zone ?? "—",
+            type:               "MANUAL_ENTRY",
+            eventName:          null,
+            startTime:          now.toISOString(),
+            endTime:            null,
+            startTimeFormatted: now.toLocaleString("es-GT"),
+            endTimeFormatted:   "—",
+          },
+        }),
+      }).then(async r => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data.error || "Error al enviar.");
+        setEmailOk(true);
+      });
+    } catch (e) {
+      setEmailErr(e.message);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (!session) return null;
+  const nombre = session.user ? `${session.user.first_name} ${session.user.last_name}` : "Visitante";
+
+  return (
+    <div className="modal" style={{ display:"flex", position:"fixed", inset:0, zIndex:1070,
+      background:"rgba(0,0,0,0.8)", alignItems:"center", justifyContent:"center" }}>
+      <div className="modal-dialog" style={{ maxWidth:380, width:"100%", margin:0 }}>
+        <div className="modal-content" style={{ borderRadius:12, overflow:"hidden" }}>
+          <div style={{ background:"linear-gradient(135deg,#800020,#a00028)", padding:"16px 20px" }}>
+            <div style={{ color:"#fff", fontWeight:800, fontSize:16 }}>
+              <i className="fa fa-ticket" style={{ marginRight:8 }} />Ticket de entrada
+            </div>
+            <div style={{ color:"rgba(255,255,255,0.75)", fontSize:12, marginTop:2 }}>
+              {session.vehicle?.placa} · Espacio {space?.code} · {nombre}
+            </div>
+          </div>
+          <div className="modal-body" style={{ textAlign:"center", padding:"20px" }}>
+            <div style={{ display:"inline-block", padding:8, background:"#fff", borderRadius:8, boxShadow:"0 2px 12px rgba(0,0,0,0.2)", marginBottom:12 }}>
+              <canvas ref={canvasRef} />
+            </div>
+            <div style={{ fontSize:13, color:"#7d8490", marginBottom:4 }}>Código de sesión</div>
+            <div style={{ fontSize:36, fontWeight:900, letterSpacing:6, color:"#800020", fontFamily:"monospace" }}>
+              {session.session_code}
+            </div>
+            <div style={{ marginTop:12, padding:"10px 14px", background:"rgba(33,186,69,0.08)", borderRadius:8, fontSize:12, color:"#7d8490", textAlign:"left" }}>
+              <i className="fa fa-info-circle" style={{ marginRight:6, color:"#21ba45" }} />
+              Presenta este código o QR al pagar. Si pagas antes de salir, la salida es inmediata.
+            </div>
+
+            {/* Envío por correo */}
+            <div style={{ borderTop:"1px solid rgba(255,255,255,0.08)", marginTop:16, paddingTop:14, textAlign:"left" }}>
+              <label style={{ fontSize:12, fontWeight:600, color:"#7d8490", display:"block", marginBottom:6 }}>
+                <i className="fa fa-envelope" style={{ marginRight:6 }} />
+                Enviar QR por correo
+              </label>
+              {emailOk ? (
+                <div style={{ color:"#21ba45", fontSize:13, textAlign:"center", padding:"6px 0" }}>
+                  <i className="fa fa-check-circle" style={{ marginRight:6 }} />
+                  Enviado a <strong>{email}</strong>
+                </div>
+              ) : (
+                <div style={{ display:"flex", gap:6 }}>
+                  <input
+                    type="email"
+                    className="form-control form-control-sm"
+                    placeholder="correo@ejemplo.com"
+                    value={email}
+                    onChange={e => { setEmail(e.target.value); setEmailErr(""); }}
+                    onKeyDown={e => e.key === "Enter" && sendEmail()}
+                    style={{ flex:1 }}
+                  />
+                  <button
+                    className="btn btn-info btn-sm"
+                    onClick={sendEmail}
+                    disabled={sending}
+                    style={{ flexShrink:0, padding:"0 14px" }}
+                  >
+                    {sending
+                      ? <i className="fa fa-spinner fa-spin" />
+                      : <i className="fa fa-paper-plane" />}
+                  </button>
+                </div>
+              )}
+              {emailErr && (
+                <p style={{ color:"#db2828", fontSize:11, marginTop:4, marginBottom:0 }}>{emailErr}</p>
+              )}
+            </div>
+          </div>
+          <div className="modal-footer" style={{ borderTop:"1px solid rgba(255,255,255,0.08)", justifyContent:"center" }}>
+            <button className="btn btn-primary" onClick={onClose}
+              style={{ background:"#800020", borderColor:"#800020", fontWeight:600 }}>
+              <i className="fa fa-check" style={{ marginRight:6 }} />Entendido
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function AssignModal({ space, onClose, onSubmit }) {
   const [plate,     setPlate]     = useState("");
   const [loading,   setLoading]   = useState(false);
   const [msg,       setMsg]       = useState("");
   const [vehicleId, setVehicleId] = useState("");
   const [found,     setFound]     = useState(null);
-  // registro rápido de visitante
   const [showRegister, setShowRegister] = useState(false);
   const [regForm, setRegForm] = useState({ first_name: "", last_name: "", phone: "", brand: "", model: "", color: "" });
   const [registering, setRegistering] = useState(false);
+  const [ticket, setTicket] = useState(null);
 
   const searchVehicle = async () => {
     if (!plate.trim()) return;
@@ -174,7 +440,7 @@ function AssignModal({ space, onClose, onSubmit }) {
       const v = res.data.data;
       setFound(v); setVehicleId(v.id);
     } catch {
-      setMsg("Vehículo no encontrado.");
+      setMsg("Vehículo no encontrado. Registra al visitante.");
       setShowRegister(true);
     }
   };
@@ -185,21 +451,21 @@ function AssignModal({ space, onClose, onSubmit }) {
     }
     setRegistering(true); setMsg("");
     try {
-      // 1. Crear usuario visitante
       const placaClean = plate.toUpperCase().replace(/\s/g, "");
+      // Email único por UUID para evitar conflictos si el visitante regresa
+      const uniqueEmail = `v-${placaClean.toLowerCase()}-${crypto.randomUUID().slice(0,8)}@uspg.local`;
       const userRes = await api.post("/users", {
-        first_name:    regForm.first_name.trim(),
-        last_name:     regForm.last_name.trim() || "Visitante",
-        email:         `visitante-${placaClean.toLowerCase()}@uspg.local`,
-        password:      crypto.randomUUID(),
-        role:          "VISITOR",
-        phone:         regForm.phone?.trim() || null,
-        is_active:     true,
+        first_name: regForm.first_name.trim(),
+        last_name:  regForm.last_name.trim() || "Visitante",
+        email:      uniqueEmail,
+        password:   crypto.randomUUID(),
+        role:       "VISITOR",
+        phone:      regForm.phone?.trim() || null,
+        is_active:  true,
       });
       const userId = userRes.data.data?.id;
-      if (!userId) throw new Error("No se pudo crear el usuario visitante.");
+      if (!userId) throw new Error("No se pudo crear el visitante.");
 
-      // 2. Registrar vehículo ligado al nuevo usuario visitante
       const vRes = await api.post("/vehicles", {
         placa:   placaClean,
         brand:   regForm.brand  || "No especificado",
@@ -221,14 +487,15 @@ function AssignModal({ space, onClose, onSubmit }) {
     if (!vehicleId) return;
     setLoading(true);
     try {
-      await api.post("/sessions", { vehicle_id: vehicleId, space_id: space.id, entry_method: "MANUAL" });
-      onSubmit();
+      const r = await api.post("/sessions", { vehicle_id: vehicleId, space_id: space.id, entry_method: "MANUAL" });
+      setTicket(r.data.data); // mostrar ticket con QR + código
     } catch (e) {
       setMsg(e.response?.data?.message || "Error al registrar entrada.");
     } finally { setLoading(false); }
   };
 
   return (
+    <>
     <div className="modal" style={{
       display: "flex", position: "fixed", inset: 0, zIndex: 1060,
       background: "rgba(0,0,0,0.7)", alignItems: "center", justifyContent: "center",
@@ -238,7 +505,7 @@ function AssignModal({ space, onClose, onSubmit }) {
         <div className="modal-content">
           <div className="modal-header">
             <h5 className="modal-title" style={{ color: "#800020" }}>Asignar espacio {space.code}</h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
 
@@ -307,9 +574,18 @@ function AssignModal({ space, onClose, onSubmit }) {
                   </div>
                   <div className="col-12 form-group" style={{ marginBottom: 8 }}>
                     <label style={{ fontSize: 12 }}>Teléfono <span style={{ color: "#aaa" }}>(opcional)</span></label>
-                    <input className="form-control form-control-sm" placeholder="5555-0000"
+                    <input className="form-control form-control-sm" placeholder="55551234"
                       value={regForm.phone}
-                      onChange={e => setRegForm(f => ({ ...f, phone: e.target.value }))} />
+                      inputMode="numeric"
+                      maxLength={8}
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, "").slice(0, 8);
+                        setRegForm(f => ({ ...f, phone: val }));
+                      }}
+                    />
+                    {regForm.phone.length > 0 && regForm.phone.length < 8 && (
+                      <small style={{ color: "#fbbd08" }}>{8 - regForm.phone.length} dígitos restantes</small>
+                    )}
                   </div>
                   <div className="col-4 form-group" style={{ marginBottom: 8 }}>
                     <label style={{ fontSize: 12 }}>Marca</label>
@@ -353,6 +629,15 @@ function AssignModal({ space, onClose, onSubmit }) {
         </div>
       </div>
     </div>
+
+    {ticket && (
+      <TicketEntradaModal
+        session={ticket}
+        space={space}
+        onClose={() => { setTicket(null); onSubmit(); }}
+      />
+    )}
+    </>
   );
 }
 
@@ -407,6 +692,32 @@ function zoneColor(pct) {
   return "#21ba45";
 }
 
+// Asigna un espacio a su sub-parqueo según zona y número de código
+function parqueoIdOfSpace(sp) {
+  const num = parseInt((sp.code || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const zoneSpaceCount = { A: 125, B: 125, C: 125, D: 125 };
+  const half = Math.floor((zoneSpaceCount[sp.zone] || 125) / 2);
+  if (sp.zone === "A") return num <= half ? "P5" : "P1"; // Norte / Oeste
+  if (sp.zone === "B") return num <= half ? "P2" : "P6"; // Sur / Este
+  if (sp.zone === "C") return "P3";
+  if (sp.zone === "D") return "P4";
+  return null;
+}
+
+// Calcula stats por sub-parqueo a partir de los espacios reales
+function computeParqueoStats(spaces) {
+  const stats = {};
+  Object.values(spaces).flat().forEach(sp => {
+    const pid = parqueoIdOfSpace(sp);
+    if (!pid) return;
+    if (!stats[pid]) stats[pid] = { total: 0, available: 0, occupied: 0 };
+    stats[pid].total++;
+    if (sp.status === "OCCUPIED") stats[pid].occupied++;
+    else if (sp.status === "AVAILABLE") stats[pid].available++;
+  });
+  return stats;
+}
+
 // Panel lateral: grid de espacios del parqueo seleccionado
 function SpacePanel({ parqueo, zoneSpaces, onClose, onSpaceClick }) {
   const [selectedSpace, setSelectedSpace] = useState(null);
@@ -455,20 +766,22 @@ function SpacePanel({ parqueo, zoneSpaces, onClose, onSpaceClick }) {
           </div>
         ) : zoneSpaces.map((sp) => {
           const num = sp.code.split("-")[1] || sp.code;
+          const isBlocked = sp.status === "OCCUPIED" || sp.status === "RESERVED" || sp.status === "MAINTENANCE";
           return (
             <div key={sp.id}
               onClick={() => {
+                if (isBlocked) return;
                 setSelectedSpace(sp);
                 onSpaceClick?.(sp);
               }}
-              title={`${sp.code} — ${sp.status}`}
+              title={`${sp.code} — ${sp.status}${sp.status === "RESERVED" ? " (reservado para evento)" : ""}`}
               style={{
                 background: spaceColor(sp),
                 color: "#fff",
                 borderRadius: 4, fontSize: 11, fontWeight: 700,
                 textAlign: "center", padding: "5px 2px",
-                cursor: sp.status === "OCCUPIED" ? "not-allowed" : "pointer",
-                opacity: sp.status === "MAINTENANCE" ? 0.55 : 1,
+                cursor: isBlocked ? "not-allowed" : "pointer",
+                opacity: (sp.status === "MAINTENANCE" || sp.status === "RESERVED") ? 0.65 : 1,
               }}>
               {num}
             </div>
@@ -505,7 +818,7 @@ function SpacePanel({ parqueo, zoneSpaces, onClose, onSpaceClick }) {
   );
 }
 
-function CampusMap({ zoneStats, spaces, onSpaceClick }) {
+function CampusMap({ zoneStats, spaces, parqueoStats, onSpaceClick }) {
   const [hovered, setHovered]      = useState(null);
   const [activeParqueo, setActive] = useState(null);
   const [tooltip, setTooltip]      = useState({ x: 0, y: 0 });
@@ -541,8 +854,8 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
 
           {/* Polígonos de los 6 parqueos */}
           {PARQUEOS.map(({ id, zone, label, pts, lx, ly }) => {
-            const zs   = zoneStats[zone] || {};
-            const pct  = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+            const ps  = parqueoStats[id] || { total: 0, available: 0, occupied: 0 };
+            const pct = ps.total ? Math.round((ps.occupied / ps.total) * 100) : 0;
             const isHov = hovered === id;
             const isAct = activeParqueo?.id === id;
 
@@ -569,8 +882,8 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
                   {label}
                 </text>
                 <text x={lx} y={ly + 10} textAnchor="middle"
-                  fill={zs.available > 0 ? "#7ef0a0" : "#ffbaba"} fontSize={13} fontWeight={700}>
-                  {zs.total ?? "—"} espacios
+                  fill={ps.available > 0 ? "#7ef0a0" : "#ffbaba"} fontSize={13} fontWeight={700}>
+                  {ps.total ?? "—"} espacios
                 </text>
               </g>
             );
@@ -602,8 +915,8 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
 
           {/* Tooltip al hacer hover */}
           {hovP && (() => {
-            const zs   = zoneStats[hovP.zone] || {};
-            const pct  = zs.total ? Math.round(((zs.occupied || 0) / zs.total) * 100) : 0;
+            const ps   = parqueoStats[hovP.id] || { total: 0, available: 0, occupied: 0 };
+            const pct  = ps.total ? Math.round((ps.occupied / ps.total) * 100) : 0;
             const fill = zoneColor(pct);
             const tx = Math.min(tooltip.x + 20, 1340);
             const ty = Math.max(tooltip.y - 120, 8);
@@ -619,7 +932,7 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
                 </text>
                 <text x={tx + 95} y={ty + 68} textAnchor="middle" fill="#aaa" fontSize={12}>ocupado</text>
                 <text x={tx + 95} y={ty + 85} textAnchor="middle" fill="#888" fontSize={11}>
-                  {zs.available ?? 0} libres · {zs.occupied ?? 0} ocupados
+                  {ps.available ?? 0} libres · {ps.occupied ?? 0} ocupados
                 </text>
               </g>
             );
@@ -627,16 +940,20 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
         </svg>
 
         {/* Leyenda inferior */}
-        <div style={{ display: "flex", gap: 18, marginTop: 8, fontSize: 12, color: "#7d8490", flexWrap: "wrap" }}>
-          {[["#21ba45", "< 60% Disponible"], ["#fbbd08", "60–85% Moderado"], ["#db2828", "> 85% Lleno"]].map(([c, l]) => (
-            <span key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ width: 12, height: 12, background: c, borderRadius: 2, display: "inline-block" }} />{l}
-            </span>
-          ))}
-          <span style={{ marginLeft: "auto", color: "#7d8490" }}>
-            <i className="fa fa-mouse-pointer" style={{ marginRight: 4 }} />
-            Click en un parqueo para ver sus espacios
-          </span>
+        <div style={{ marginTop: 10, borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: 10 }}>
+          <div style={{ display: "flex", gap: 18, fontSize: 12, color: "#7d8490", flexWrap: "wrap", alignItems: "center" }}>
+            <strong style={{ color: "#adb5bd", fontSize: 11 }}>Ocupación:</strong>
+            {[["#21ba45", "< 60% Disponible"], ["#fbbd08", "60–85% Moderado"], ["#db2828", "> 85% Lleno"]].map(([c, l]) => (
+              <span key={l} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 12, height: 12, background: c, borderRadius: 2, display: "inline-block" }} />{l}
+              </span>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 20, fontSize: 11, color: "#7d8490", marginTop: 6, flexWrap: "wrap" }}>
+            <span><i className="fa fa-mouse-pointer" style={{ marginRight: 4, color: "#17a2b8" }} />Hover sobre un parqueo para ver estadísticas</span>
+            <span><i className="fa fa-hand-o-up" style={{ marginRight: 4, color: "#800020" }} />Click en un parqueo para ver y gestionar espacios individuales</span>
+            <span><i className="fa fa-circle" style={{ marginRight: 4, color: "#21ba45" }} />Verde = espacio libre · <i className="fa fa-circle" style={{ margin: "0 4px 0 6px", color: "#db2828" }} />Rojo = ocupado · <i className="fa fa-circle" style={{ margin: "0 4px 0 6px", color: "#7d8490" }} />Gris = mantenimiento</span>
+          </div>
         </div>
       </div>
 
@@ -648,7 +965,7 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
         }}>
           <SpacePanel
             parqueo={activeParqueo}
-            zoneSpaces={spaces[activeParqueo.zone] || []}
+            zoneSpaces={(spaces[activeParqueo.zone] || []).filter(sp => parqueoIdOfSpace(sp) === activeParqueo.id)}
             onClose={() => setActive(null)}
             onSpaceClick={onSpaceClick}
           />
@@ -656,6 +973,10 @@ function CampusMap({ zoneStats, spaces, onSpaceClick }) {
       )}
     </div>
   );
+}
+
+function decodeJwt(token) {
+  try { return JSON.parse(atob(token.split(".")[1])); } catch { return null; }
 }
 
 // ── Página principal del mapa ─────────────────────────────────────────────────
@@ -666,7 +987,27 @@ export default function MapaParqueo() {
   const [assigning, setAssigning]   = useState(null);
   const [loading, setLoading]       = useState(true);
   const [lastUpdate, setLastUpdate] = useState(null);
-  const [countdown, setCountdown]   = useState(20);
+  const [countdown, setCountdown]   = useState(30);
+  const [userRole, setUserRole]     = useState(null);
+  const [tariffs,  setTariffs]      = useState({});
+  const [pagoSession, setPagoSession] = useState(null);
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+    const decoded = decodeJwt(token);
+    setUserRole(decoded?.role || null);
+  }, []);
+
+  useEffect(() => {
+    api.get("/tariffs").then(r => {
+      const map = {};
+      (r.data.data || []).forEach(t => { map[t.role] = t; });
+      setTariffs(map);
+    }).catch(() => {});
+  }, []);
+
+  // Solo ADMIN y SECURITY pueden asignar/poner en mantenimiento
+  const canManage = userRole === "ADMIN" || userRole === "SECURITY";
 
   const load = useCallback(async () => {
     try {
@@ -692,7 +1033,7 @@ export default function MapaParqueo() {
       setSpaces(grouped);
       setZoneStats(statusRes.data.data?.by_zone || {});
       setLastUpdate(new Date());
-      setCountdown(20);
+      setCountdown(30);
     } catch (e) {
       console.error("Error cargando mapa:", e);
     } finally {
@@ -702,7 +1043,7 @@ export default function MapaParqueo() {
 
   useEffect(() => {
     load();
-    const t = setInterval(load, 3000);
+    const t = setInterval(load, 30000);
     return () => clearInterval(t);
   }, [load]);
 
@@ -714,6 +1055,8 @@ export default function MapaParqueo() {
   const handleSpaceClick = (sp) => setSelected(sp);
   const handleAssignClick = (sp) => { setSelected(null); setAssigning(sp); };
   const handleAssignDone  = () => { setAssigning(null); load(); };
+
+  const parqueoStats = computeParqueoStats(spaces);
 
   const totalStats = Object.values(zoneStats).reduce(
     (acc, z) => ({
@@ -760,12 +1103,8 @@ export default function MapaParqueo() {
           </div>
 
           {PARQUEOS.map(p => {
-            const zs = zoneStats[p.zone] || {};
-            // Si hay 2 parqueos en la misma zona, dividir estadísticas entre ellos
-            const siblings = PARQUEOS.filter(x => x.zone === p.zone).length;
-            const total     = Math.round((zs.total     || 0) / siblings);
-            const occupied  = Math.round((zs.occupied  || 0) / siblings);
-            const available = Math.round((zs.available || 0) / siblings);
+            const ps = parqueoStats[p.id] || { total: 0, available: 0, occupied: 0 };
+            const { total, occupied, available } = ps;
             const pct  = total ? Math.round((occupied / total) * 100) : 0;
             const color = pct > 85 ? "#db2828" : pct > 60 ? "#fbbd08" : "#21ba45";
             return (
@@ -842,6 +1181,7 @@ export default function MapaParqueo() {
               <CampusMap
                 zoneStats={zoneStats}
                 spaces={spaces}
+                parqueoStats={parqueoStats}
                 onSpaceClick={handleSpaceClick}
               />
             </div>
@@ -852,12 +1192,22 @@ export default function MapaParqueo() {
       {selected && (
         <SpaceModal
           space={selected}
+          canManage={canManage}
+          tariffs={tariffs}
           onClose={() => setSelected(null)}
           onAssign={handleAssignClick}
           onStatusChange={() => { setSelected(null); load(); }}
+          onPayRequired={(sess) => { setSelected(null); setPagoSession(sess); }}
         />
       )}
-      {assigning && (
+      {pagoSession && (
+        <PagoMapaModal
+          session={pagoSession}
+          onClose={() => setPagoSession(null)}
+          onDone={() => { setPagoSession(null); load(); }}
+        />
+      )}
+      {assigning && canManage && (
         <AssignModal
           space={assigning}
           onClose={() => setAssigning(null)}

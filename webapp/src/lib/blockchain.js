@@ -28,16 +28,8 @@ function getContract() {
  * No lanza excepción — si falla, solo loguea. La BD es la fuente de verdad.
  */
 export async function anclarAudit({ sessionId, action, data }) {
-  console.log('[blockchain] anclarAudit llamado:', action, sessionId);
-  console.log('[blockchain] RPC:', process.env.BLOCKCHAIN_RPC_URL ? 'OK' : 'MISSING');
-  console.log('[blockchain] KEY:', process.env.BLOCKCHAIN_PRIVATE_KEY ? 'OK' : 'MISSING');
-  console.log('[blockchain] CONTRACT:', process.env.BLOCKCHAIN_CONTRACT_ADDRESS ? 'OK' : 'MISSING');
-
   const contract = getContract();
-  if (!contract) {
-    console.error('[blockchain] getContract() devolvió null — faltan variables de entorno');
-    return null;
-  }
+  if (!contract) return null;
 
   try {
     const dataHash = crypto
@@ -45,9 +37,10 @@ export async function anclarAudit({ sessionId, action, data }) {
       .update(JSON.stringify(data))
       .digest('hex');
 
+    // Submit TX and return immediately — don't wait for block confirmation.
+    // Mining happens asynchronously on Polygon Amoy; waiting here would add ~2s
+    // to every scan response while Vercel has the function alive.
     const tx = await contract.registrar(String(sessionId), dataHash, String(action));
-    await tx.wait(1);
-
     return { txHash: tx.hash, dataHash };
   } catch (err) {
     console.error('[blockchain] Error al anclar audit:', err.message);

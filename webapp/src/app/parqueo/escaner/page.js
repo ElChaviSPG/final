@@ -58,9 +58,7 @@ function VisitorModal({ onClose }) {
       });
       setQrData(res.data.data);
     } catch (e) {
-      // Si el endpoint no existe aún, simulamos un QR local para demo
-      const code = `USPG-VISIT-${Date.now()}-${form.name.replace(/\s/g, "_").toUpperCase()}`;
-      setQrData({ code, name: form.name, max_hours: form.max_hours, expires_at: null });
+      setError(e.response?.data?.message || "Error al generar el QR. Intenta nuevamente.");
     } finally {
       setLoading(false);
     }
@@ -121,7 +119,7 @@ function VisitorModal({ onClose }) {
               <i className="fa fa-qrcode" style={{ marginRight: 8 }} />
               Generar QR visitante
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             {!qrData ? (
@@ -362,7 +360,7 @@ export default function EscanerQR() {
     stopCamera();
     try {
       const res = await api.post("/qr/scan", { code: code.trim() });
-      setResult({ success: true, ...res.data.data });
+      setResult({ success: true, data: res.data.data });
       setScanCount(c => c + 1);
     } catch (e) {
       const errData = e.response?.data;

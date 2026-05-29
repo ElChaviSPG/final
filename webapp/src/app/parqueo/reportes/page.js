@@ -238,7 +238,7 @@ export default function Reportes() {
       const [revRes, occRes, topRes, predRes] = await Promise.allSettled([
         api.get(`/reports/revenue?from=${dateFrom}&to=${dateTo}`),
         api.get(`/reports/occupancy?from=${dateFrom}&to=${dateTo}`),
-        api.get("/reports/top-users?limit=10"),
+        api.get(`/reports/top-users?limit=10&from=${dateFrom}&to=${dateTo}`),
         api.get("/reports/prediction"),
       ]);
 

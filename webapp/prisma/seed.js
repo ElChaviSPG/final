@@ -1,239 +1,510 @@
 // prisma/seed.js — Smart Parking USPG, Grupo 5
 // Ejecutar: npm run seed
+// Limpia toda la BD y crea datos frescos y coherentes.
 
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log('🌱 Iniciando seed...');
-
-  // ─── Campus ─────────────────────────────────────────────────────────────
-  let campus = await prisma.campus.findFirst();
-  if (!campus) {
-    campus = await prisma.campus.create({
-      data: {
-        name: 'Universidad San Pablo Guatemala',
-        address: '13 Calle 4-65, Guatemala City, Guatemala',
-        lat: 14.5847, lng: -90.5085, zoom: 18, total_spaces: 500,
-      },
-    });
-    console.log(`✅ Campus creado: ${campus.name}`);
-  } else {
-    console.log(`✅ Campus ya existe: ${campus.name}`);
+// ── Generador de session_code único ────────────────────────────────────────────
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const usedCodes = new Set();
+function makeSessionCode() {
+  for (let attempt = 0; attempt < 100; attempt++) {
+    let code = '';
+    for (let i = 0; i < 6; i++) code += CHARS[Math.floor(Math.random() * CHARS.length)];
+    if (!usedCodes.has(code)) { usedCodes.add(code); return code; }
   }
+  throw new Error('No se pudo generar código de sesión único');
+}
 
-  // ─── Usuarios ─────────────────────────────────────────────────────────
+// ── Wipe completo en orden FK-safe ─────────────────────────────────────────────
+async function wipeAll() {
+  console.log('🗑️  Limpiando base de datos...');
+  await prisma.blockchainAudit.deleteMany();
+  await prisma.payment.deleteMany();
+  await prisma.visitorQR.deleteMany();
+  await prisma.barrierLog.deleteMany();
+  await prisma.parkingSession.deleteMany();
+  await prisma.blacklist.deleteMany();
+  await prisma.cardReplacement.deleteMany();
+  await prisma.reservation.deleteMany();
+  await prisma.auditLog.deleteMany();
+  await prisma.notification.deleteMany();
+  await prisma.monthlyBill.deleteMany();
+  await prisma.parkingSubscription.deleteMany();
+  await prisma.parkingEvent.deleteMany();
+  await prisma.vehicle.deleteMany();
+  await prisma.parkingSpace.deleteMany();
+  await prisma.tariffConfig.deleteMany();
+  await prisma.camera.deleteMany();
+  await prisma.user.deleteMany();
+  await prisma.campus.deleteMany();
+  console.log('✅ BD limpia\n');
+}
+
+async function main() {
+  console.log('🌱 Iniciando seed — Smart Parking USPG Grupo 5\n');
+
+  await wipeAll();
+
+  // ── Campus ─────────────────────────────────────────────────────────────────
+  const campus = await prisma.campus.create({
+    data: {
+      name: 'Universidad San Pablo Guatemala',
+      address: '13 Calle 4-65, Zona 10, Guatemala City',
+      lat: 14.5847, lng: -90.5085, zoom: 18, total_spaces: 500,
+    },
+  });
+  console.log(`✅ Campus: ${campus.name}`);
+
+  // ── Usuarios ───────────────────────────────────────────────────────────────
   const [hashAdmin, hashTeacher, hashStudent, hashSecurity] = await Promise.all([
-    bcrypt.hash('Admin2026!', 10),
-    bcrypt.hash('Teacher2026!', 10),
-    bcrypt.hash('Student2026!', 10),
+    bcrypt.hash('Admin2026!',    10),
+    bcrypt.hash('Teacher2026!',  10),
+    bcrypt.hash('Student2026!',  10),
     bcrypt.hash('Security2026!', 10),
   ]);
 
-  const usersSpec = [
-    { email: 'admin@uspg.edu.gt',     password_hash: hashAdmin,    role: 'ADMIN',    first_name: 'José',   last_name: 'Galicia', carnet: null,       nfc_card_id: 'NFC-ADMIN-SEED',    qr_code: 'QR-ADMIN-SEED' },
-    { email: 'docente01@uspg.edu.gt', password_hash: hashTeacher,  role: 'TEACHER',  first_name: 'María',  last_name: 'López',   carnet: null,       nfc_card_id: 'NFC-TEACHER-SEED',  qr_code: 'QR-TEACHER-SEED' },
-    { email: 'est001@uspg.edu.gt',    password_hash: hashStudent,  role: 'STUDENT',  first_name: 'Carlos', last_name: 'Pérez',   carnet: '2021-0001',nfc_card_id: 'NFC-STUDENT-SEED1', qr_code: 'QR-STUDENT-SEED1' },
-    { email: 'est002@uspg.edu.gt',    password_hash: hashStudent,  role: 'STUDENT',  first_name: 'Ana',    last_name: 'García',  carnet: '2021-0002',nfc_card_id: 'NFC-STUDENT-SEED2', qr_code: 'QR-STUDENT-SEED2' },
-    { email: 'guardia01@uspg.edu.gt', password_hash: hashSecurity, role: 'SECURITY', first_name: 'Pedro',  last_name: 'Morales', carnet: null,       nfc_card_id: 'NFC-SECURITY-SEED', qr_code: 'QR-SECURITY-SEED' },
+  const usersData = [
+    {
+      email: 'admin@uspg.edu.gt',      password_hash: hashAdmin,
+      role: 'ADMIN',    first_name: 'José',     last_name: 'Galicia',
+      carnet: null,     nfc_card_id: 'NFC-ADMIN-001',
+      qr_code: 'USP-QR-ADMIN-001',    phone: '5500-0001',
+    },
+    {
+      email: 'docente01@uspg.edu.gt',  password_hash: hashTeacher,
+      role: 'TEACHER',  first_name: 'María',    last_name: 'López',
+      carnet: 'DOC-2020-001', nfc_card_id: 'NFC-DOC-001',
+      qr_code: 'USP-QR-DOC-001',      phone: '5500-0002',
+    },
+    {
+      email: 'docente02@uspg.edu.gt',  password_hash: hashTeacher,
+      role: 'TEACHER',  first_name: 'Roberto',  last_name: 'Méndez',
+      carnet: 'DOC-2019-002', nfc_card_id: null,
+      qr_code: 'USP-QR-DOC-002',      phone: '5500-0003',
+    },
+    {
+      email: 'est001@uspg.edu.gt',     password_hash: hashStudent,
+      role: 'STUDENT',  first_name: 'Carlos',   last_name: 'Pérez',
+      carnet: '2021-0001', nfc_card_id: 'NFC-EST-001',
+      qr_code: 'USP-QR-EST-001',      phone: '5500-1001',
+    },
+    {
+      email: 'est002@uspg.edu.gt',     password_hash: hashStudent,
+      role: 'STUDENT',  first_name: 'Ana',      last_name: 'García',
+      carnet: '2021-0002', nfc_card_id: 'NFC-EST-002',
+      qr_code: 'USP-QR-EST-002',      phone: '5500-1002',
+    },
+    {
+      email: 'est003@uspg.edu.gt',     password_hash: hashStudent,
+      role: 'STUDENT',  first_name: 'Luis',     last_name: 'Herrera',
+      carnet: '2022-0003', nfc_card_id: null,
+      qr_code: 'USP-QR-EST-003',      phone: '5500-1003',
+    },
+    {
+      email: 'guardia01@uspg.edu.gt',  password_hash: hashSecurity,
+      role: 'SECURITY', first_name: 'Pedro',    last_name: 'Morales',
+      carnet: null,     nfc_card_id: 'NFC-SEC-001',
+      qr_code: 'USP-QR-SEC-001',      phone: '5500-2001',
+    },
+    {
+      email: 'guardia02@uspg.edu.gt',  password_hash: hashSecurity,
+      role: 'SECURITY', first_name: 'Rosa',     last_name: 'Fuentes',
+      carnet: null,     nfc_card_id: 'NFC-SEC-002',
+      qr_code: 'USP-QR-SEC-002',      phone: '5500-2002',
+    },
   ];
 
-  const userMap = {};
-  for (const spec of usersSpec) {
-    let u = await prisma.user.findFirst({ where: { email: spec.email } });
-    if (!u) {
-      u = await prisma.user.create({ data: spec });
-      console.log(`  ✅ Usuario creado: ${spec.email}`);
-    } else {
-      console.log(`  ℹ️  Usuario ya existe: ${spec.email} (id: ${u.id})`);
-    }
-    userMap[spec.email] = u.id;
+  const users = {};
+  for (const ud of usersData) {
+    const u = await prisma.user.create({ data: ud });
+    users[ud.email] = u;
   }
+  console.log(`✅ Usuarios: ${usersData.length} creados`);
 
-  const adminId    = userMap['admin@uspg.edu.gt'];
-  const teacherId  = userMap['docente01@uspg.edu.gt'];
-  const student1Id = userMap['est001@uspg.edu.gt'];
-  const student2Id = userMap['est002@uspg.edu.gt'];
-  const securityId = userMap['guardia01@uspg.edu.gt'];
+  const admin     = users['admin@uspg.edu.gt'];
+  const doc01     = users['docente01@uspg.edu.gt'];
+  const doc02     = users['docente02@uspg.edu.gt'];
+  const est001    = users['est001@uspg.edu.gt'];
+  const est002    = users['est002@uspg.edu.gt'];
+  const est003    = users['est003@uspg.edu.gt'];
+  const guardia01 = users['guardia01@uspg.edu.gt'];
+  const guardia02 = users['guardia02@uspg.edu.gt'];
 
-  // ─── Vehículos ─────────────────────────────────────────────────────────
-  const vehiclesSpec = [
-    { user_id: adminId,    placa: 'P123ABC', brand: 'Toyota',     model: 'Fortuner', color: 'Blanco',   year: 2022 },
-    { user_id: teacherId,  placa: 'C456XYZ', brand: 'Honda',      model: 'CR-V',     color: 'Gris',     year: 2020 },
-    { user_id: student1Id, placa: 'P789DEF', brand: 'Hyundai',    model: 'Tucson',   color: 'Negro',    year: 2019 },
-    { user_id: student1Id, placa: 'M001GHI', brand: 'Suzuki',     model: 'Swift',    color: 'Rojo',     year: 2021 },
-    { user_id: student2Id, placa: 'C234JKL', brand: 'Kia',        model: 'Sportage', color: 'Azul',     year: 2023 },
-    { user_id: student2Id, placa: 'O567MNO', brand: 'Nissan',     model: 'Versa',    color: 'Blanco',   year: 2020 },
-    { user_id: securityId, placa: 'P890PQR', brand: 'Toyota',     model: 'Hilux',    color: 'Plateado', year: 2018 },
-    { user_id: teacherId,  placa: 'M345STU', brand: 'Volkswagen', model: 'Jetta',    color: 'Gris',     year: 2021 },
-    { user_id: student1Id, placa: 'C678VWX', brand: 'Chevrolet',  model: 'Captiva',  color: 'Café',     year: 2017 },
-    { user_id: adminId,    placa: 'P901YZA', brand: 'Land Rover', model: 'Defender', color: 'Verde',    year: 2024 },
+  // ── Vehículos ──────────────────────────────────────────────────────────────
+  const vehiclesData = [
+    { user_id: admin.id,     placa: 'P-123ABC', brand: 'Toyota',     model: 'Fortuner',  color: 'Blanco',   year: 2022, vehicle_type: 'STANDARD', is_authorized: true },
+    { user_id: doc01.id,     placa: 'C-456XYZ', brand: 'Honda',      model: 'CR-V',      color: 'Gris',     year: 2020, vehicle_type: 'TEACHER',  is_authorized: true },
+    { user_id: doc02.id,     placa: 'M-345STU', brand: 'Volkswagen', model: 'Jetta',     color: 'Plateado', year: 2021, vehicle_type: 'TEACHER',  is_authorized: true },
+    { user_id: est001.id,    placa: 'P-789DEF', brand: 'Hyundai',    model: 'Tucson',    color: 'Negro',    year: 2019, vehicle_type: 'STANDARD', is_authorized: true },
+    { user_id: est001.id,    placa: 'M-001GHI', brand: 'Suzuki',     model: 'Swift',     color: 'Rojo',     year: 2021, vehicle_type: 'MOTORCYCLE',is_authorized: true },
+    { user_id: est002.id,    placa: 'C-234JKL', brand: 'Kia',        model: 'Sportage',  color: 'Azul',     year: 2023, vehicle_type: 'STANDARD', is_authorized: true },
+    { user_id: est003.id,    placa: 'C-678VWX', brand: 'Chevrolet',  model: 'Sail',      color: 'Café',     year: 2020, vehicle_type: 'STANDARD', is_authorized: false, blacklisted: true, blacklist_reason: 'Ingreso sin autorización — 3er reincidente' },
+    { user_id: guardia01.id, placa: 'P-890PQR', brand: 'Toyota',     model: 'Hilux',     color: 'Plateado', year: 2018, vehicle_type: 'STANDARD', is_authorized: true },
+    { user_id: guardia02.id, placa: 'O-567MNO', brand: 'Nissan',     model: 'Versa',     color: 'Blanco',   year: 2020, vehicle_type: 'STANDARD', is_authorized: true },
   ];
 
-  const vehicleMap = {};
-  for (const spec of vehiclesSpec) {
-    let v = await prisma.vehicle.findFirst({ where: { placa: spec.placa } });
-    if (!v) {
-      v = await prisma.vehicle.create({ data: spec });
-    }
-    vehicleMap[spec.placa] = v.id;
+  const vehicles = {};
+  for (const vd of vehiclesData) {
+    const v = await prisma.vehicle.create({ data: vd });
+    vehicles[vd.placa] = v;
   }
-  console.log(`✅ Vehículos: ${vehiclesSpec.length}`);
+  console.log(`✅ Vehículos: ${vehiclesData.length} creados`);
 
-  // ─── Espacios ─────────────────────────────────────────────────────────
-  const existingSpaces = await prisma.parkingSpace.count();
-  if (existingSpaces < 500) {
-    const zoneDefs = [
-      { zone: 'A', count: 220, handicapped: 5, electric: 10 },
-      { zone: 'B', count: 150, handicapped: 3, electric:  6 },
-      { zone: 'C', count: 100, handicapped: 2, electric:  0 },
-      { zone: 'D', count:  30, handicapped: 0, electric:  0 },
-    ];
-    let created = 0;
-    for (const def of zoneDefs) {
-      for (let n = 1; n <= def.count; n++) {
-        const code = `${def.zone}-${String(n).padStart(3, '0')}`;
-        let type = 'STANDARD';
-        if (def.zone === 'D')         type = n <= 15 ? 'TEACHER' : n <= 25 ? 'VIP' : 'RESERVED';
-        else if (n <= def.handicapped) type = 'HANDICAPPED';
-        else if (n <= def.handicapped + def.electric) type = 'ELECTRIC';
+  // Blacklist record para el vehículo bloqueado
+  await prisma.blacklist.create({
+    data: {
+      vehicle_id: vehicles['C-678VWX'].id,
+      reason: 'Ingreso sin autorización — 3er reincidente',
+      added_by_user_id: admin.id,
+      is_active: true,
+    },
+  });
+  console.log('✅ Lista negra: 1 vehículo registrado');
 
-        const existing = await prisma.parkingSpace.findFirst({ where: { code } });
-        if (!existing) {
-          await prisma.parkingSpace.create({ data: { code, campus_id: campus.id, zone: def.zone, type, status: 'AVAILABLE' } });
-          created++;
-        }
+  // ── Espacios de parqueo ────────────────────────────────────────────────────
+  const zoneDefs = [
+    { zone: 'A', count: 220, handicapped: 5, electric: 10 },
+    { zone: 'B', count: 150, handicapped: 3, electric:  6 },
+    { zone: 'C', count: 100, handicapped: 2, electric:  0 },
+    { zone: 'D', count:  30, handicapped: 0, electric:  0 },
+  ];
+
+  const spaceIds = {};
+  let spacesCreated = 0;
+
+  for (const def of zoneDefs) {
+    const batch = [];
+    for (let n = 1; n <= def.count; n++) {
+      const code = `${def.zone}-${String(n).padStart(3, '0')}`;
+      let type = 'STANDARD';
+      if (def.zone === 'D') {
+        type = n <= 15 ? 'TEACHER' : n <= 20 ? 'VIP' : 'RESERVED';
+      } else if (n <= def.handicapped) {
+        type = 'HANDICAPPED';
+      } else if (n <= def.handicapped + def.electric) {
+        type = 'ELECTRIC';
       }
+      batch.push({ code, campus_id: campus.id, zone: def.zone, type, status: 'AVAILABLE' });
     }
-    console.log(`✅ Espacios: ${created} nuevos creados`);
-  } else {
-    console.log(`✅ Espacios: ya existen (${existingSpaces})`);
+    // createMany es mucho más rápido que N creates individuales
+    await prisma.parkingSpace.createMany({ data: batch });
+    spacesCreated += batch.length;
   }
 
-  // ─── Obtener IDs de espacios para sesiones ─────────────────────────────
-  const getSpaceId = async (code) => {
+  // Guardamos algunos IDs de espacios que usaremos para sesiones
+  const spaceCodes = ['A-001','A-002','A-003','A-004','A-005',
+                      'B-001','B-005','B-010',
+                      'C-001','C-010',
+                      'D-001','D-002',
+                      'A-010','A-020','A-030'];
+  for (const code of spaceCodes) {
     const s = await prisma.parkingSpace.findFirst({ where: { code } });
-    return s?.id;
-  };
+    if (s) spaceIds[code] = s;
+  }
+  console.log(`✅ Espacios: ${spacesCreated} creados`);
 
-  // ─── Suscripciones ─────────────────────────────────────────────────────
+  // ── Tarifas ────────────────────────────────────────────────────────────────
+  const tariffsData = [
+    { role: 'ADMIN',    hourly_rate: 0,  is_free: true,  max_free_hours: null },
+    { role: 'SECURITY', hourly_rate: 0,  is_free: true,  max_free_hours: null },
+    { role: 'TEACHER',  hourly_rate: 0,  is_free: true,  max_free_hours: 8    },
+    { role: 'STUDENT',  hourly_rate: 5,  is_free: false, max_free_hours: null },
+    { role: 'VISITOR',  hourly_rate: 10, is_free: false, max_free_hours: null },
+  ];
+  await prisma.tariffConfig.createMany({ data: tariffsData });
+  console.log('✅ Tarifas: configuradas (STUDENT Q5/h, VISITOR Q10/h, resto gratis)');
+
+  // ── Suscripciones ──────────────────────────────────────────────────────────
   const now = new Date();
-  const existingSub1 = await prisma.parkingSubscription.findFirst({ where: { user_id: student1Id, status: 'ACTIVE' } });
-  if (!existingSub1) {
-    await prisma.parkingSubscription.create({
+  const DAY = 86400000;
+
+  await prisma.parkingSubscription.createMany({
+    data: [
+      {
+        user_id: est001.id, type: 'MONTHLY', status: 'ACTIVE',
+        start_date: new Date(now.getTime() - 15 * DAY),
+        end_date:   new Date(now.getTime() + 15 * DAY),
+        amount_paid: 150.00, payment_reference: 'REF-MAY-2026-001', auto_renew: false,
+      },
+      {
+        user_id: est002.id, type: 'SEMESTER', status: 'ACTIVE',
+        start_date: new Date(now.getTime() - 30 * DAY),
+        end_date:   new Date(now.getTime() + 150 * DAY),
+        amount_paid: 600.00, payment_reference: 'REF-ENE-2026-002', auto_renew: true,
+      },
+      {
+        user_id: doc02.id, type: 'MONTHLY', status: 'EXPIRED',
+        start_date: new Date(now.getTime() - 40 * DAY),
+        end_date:   new Date(now.getTime() - 10 * DAY),
+        amount_paid: 150.00, payment_reference: 'REF-ABR-2026-003', auto_renew: false,
+      },
+    ],
+  });
+  console.log('✅ Suscripciones: 3 creadas (2 activas, 1 expirada)');
+
+  // ── Eventos ────────────────────────────────────────────────────────────────
+  await prisma.parkingEvent.createMany({
+    data: [
+      {
+        name: 'Graduación Junio 2026',
+        description: 'Ceremonia de graduación — Semestre II, todos los programas.',
+        event_date:  new Date('2026-06-15'),
+        start_time:  new Date('2026-06-15T17:00:00Z'),
+        end_time:    new Date('2026-06-16T03:00:00Z'),
+        tariff_mode: 'FLAT_RATE', flat_rate: 25.00,
+        affected_zones: 'A,B,C,D', status: 'SCHEDULED',
+        created_by_user_id: admin.id,
+        uses_external_parking: true,
+        external_parking_name: 'Terreno Auxiliar Norte',
+        shuttle_available: true,
+      },
+      {
+        name: 'Conferencia de Tecnología 2026',
+        description: 'Evento académico anual de la Facultad de Ingeniería.',
+        event_date:  new Date(now.getTime() - 3 * DAY),
+        start_time:  new Date(now.getTime() - 3 * DAY + 14 * 3600000),
+        end_time:    new Date(now.getTime() - 3 * DAY + 22 * 3600000),
+        tariff_mode: 'HOURLY', flat_rate: null,
+        affected_zones: 'A,B', status: 'COMPLETED',
+        created_by_user_id: admin.id,
+        uses_external_parking: false, shuttle_available: false,
+      },
+    ],
+  });
+  console.log('✅ Eventos: 2 creados (1 programado, 1 finalizado)');
+
+  // ── Sesiones ACTIVAS (5) ───────────────────────────────────────────────────
+  // Cada una ocupa su espacio
+  const activeSessions = [
+    { vehicle: 'P-789DEF', user: est001,    space: 'A-001', method: 'QR',    hoursAgo: 2   },
+    { vehicle: 'C-234JKL', user: est002,    space: 'A-002', method: 'QR',    hoursAgo: 1   },
+    { vehicle: 'C-456XYZ', user: doc01,     space: 'D-001', method: 'NFC',   hoursAgo: 3   },
+    { vehicle: 'P-890PQR', user: guardia01, space: 'B-001', method: 'NFC',   hoursAgo: 0.5 },
+    { vehicle: 'P-123ABC', user: admin,     space: 'A-005', method: 'NFC',   hoursAgo: 4   },
+  ];
+
+  const activeSessionIds = [];
+  for (const s of activeSessions) {
+    const sp = spaceIds[s.space];
+    if (!sp) continue;
+    const session = await prisma.parkingSession.create({
       data: {
-        user_id: student1Id, type: 'MONTHLY', status: 'ACTIVE',
-        start_date: new Date(now.getTime() - 15 * 86400000),
-        end_date: new Date(now.getTime() + 15 * 86400000),
-        amount_paid: 150.00, payment_reference: 'REF-2026-0501',
+        session_code: makeSessionCode(),
+        vehicle_id:   vehicles[s.vehicle].id,
+        space_id:     sp.id,
+        user_id:      s.user.id,
+        entry_method: s.method,
+        entry_time:   new Date(now.getTime() - s.hoursAgo * 3600000),
+        status:       'ACTIVE',
       },
     });
+    await prisma.parkingSpace.update({ where: { id: sp.id }, data: { status: 'OCCUPIED' } });
+    activeSessionIds.push(session.id);
+  }
+  console.log(`✅ Sesiones activas: ${activeSessionIds.length} creadas`);
+
+  // ── Historial de sesiones (30 días) ───────────────────────────────────────
+  // Datos realistas: de lunes a viernes, ~6 sesiones/día
+  const histVehicles = [
+    { placa: 'P-789DEF', user: est001,    role: 'STUDENT' },
+    { placa: 'C-234JKL', user: est002,    role: 'STUDENT' },
+    { placa: 'M-001GHI', user: est001,    role: 'STUDENT' },
+    { placa: 'C-456XYZ', user: doc01,     role: 'TEACHER' },
+    { placa: 'M-345STU', user: doc02,     role: 'TEACHER' },
+    { placa: 'P-890PQR', user: guardia01, role: 'SECURITY'},
+    { placa: 'O-567MNO', user: guardia02, role: 'SECURITY'},
+  ];
+  const histSpaceCodes = ['A-010','A-020','A-030','B-005','B-010','C-001','C-010'];
+  const histSpaces = [];
+  for (const code of histSpaceCodes) {
+    const s = await prisma.parkingSpace.findFirst({ where: { code } });
+    if (s) histSpaces.push(s);
   }
 
-  const existingSub2 = await prisma.parkingSubscription.findFirst({ where: { user_id: student2Id, status: 'ACTIVE' } });
-  if (!existingSub2) {
-    await prisma.parkingSubscription.create({
-      data: {
-        user_id: student2Id, type: 'SEMESTER', status: 'ACTIVE',
-        start_date: new Date(now.getTime() - 30 * 86400000),
-        end_date: new Date(now.getTime() + 150 * 86400000),
-        amount_paid: 600.00, payment_reference: 'REF-2026-0502',
-      },
-    });
-  }
-  console.log('✅ Suscripciones: creadas');
+  // Duraciones y métodos variados por rol
+  const durations = { STUDENT: [60,90,120,150,180,240], TEACHER: [120,180,240,300,360,420], SECURITY: [480,540,600] };
+  const methods   = ['QR','QR','QR','NFC','MANUAL'];
+  let histCreated = 0;
 
-  // ─── Eventos ─────────────────────────────────────────────────────────
-  const existingEvent = await prisma.parkingEvent.findFirst({ where: { name: 'Graduación Junio 2026' } });
-  if (!existingEvent) {
-    await prisma.parkingEvent.create({
-      data: {
-        name: 'Graduación Junio 2026', description: 'Graduación semestre 2 — Grupo 5',
-        event_date: new Date('2026-06-15'),
-        start_time: new Date('2026-06-15T12:00:00Z'),
-        end_time: new Date('2026-06-16T04:00:00Z'),
-        tariff_mode: 'FLAT_RATE', flat_rate: 25.00, affected_zones: 'A,B,C,D',
-        status: 'SCHEDULED', created_by_user_id: adminId,
-        uses_external_parking: true, external_parking_name: 'Terreno Auxiliar Norte', shuttle_available: true,
-      },
-    });
-  }
-  console.log('✅ Eventos: creados');
+  for (let daysBack = 1; daysBack <= 30; daysBack++) {
+    // Fin de semana: reducir actividad
+    const date = new Date(now.getTime() - daysBack * DAY);
+    const dow  = date.getDay(); // 0=Dom, 6=Sáb
+    const sessionsThisDay = (dow === 0 || dow === 6) ? 2 : 6;
 
-  // ─── Sesiones activas ─────────────────────────────────────────────────
-  const spaceCodes = ['A-001','A-002','D-001','B-001','C-001'];
-  const sessionUsers = [student1Id, student2Id, teacherId, securityId, adminId];
-  const sessionVehicles = ['P789DEF','C234JKL','C456XYZ','P890PQR','P123ABC'];
-  const sessionMethods = ['QR','NFC','NFC','MANUAL','NFC'];
-  const sessionHours = [2, 1, 3, 0.5, 4];
+    for (let s = 0; s < sessionsThisDay; s++) {
+      const vInfo  = histVehicles[(daysBack * 7 + s) % histVehicles.length];
+      const space  = histSpaces[(daysBack + s) % histSpaces.length];
+      const durs   = durations[vInfo.role] ?? [90,120];
+      const dur    = durs[(daysBack + s) % durs.length];
+      const method = methods[(daysBack + s) % methods.length];
 
-  let activeCreated = 0;
-  for (let i = 0; i < 5; i++) {
-    const spaceId = await getSpaceId(spaceCodes[i]);
-    const vehicleId = vehicleMap[sessionVehicles[i]];
-    if (!spaceId || !vehicleId) continue;
+      const entryHour  = 7 + (s * 2); // de 7am a 7pm
+      const entryTime  = new Date(date);
+      entryTime.setHours(entryHour, 0, 0, 0);
+      const exitTime   = new Date(entryTime.getTime() + dur * 60000);
 
-    const existing = await prisma.parkingSession.findFirst({ where: { space_id: spaceId, status: 'ACTIVE' } });
-    if (!existing) {
-      await prisma.parkingSession.create({
+      // Calcular monto según rol
+      const tariff = tariffsData.find(t => t.role === vInfo.role);
+      let amount = 0;
+      if (!tariff?.is_free) {
+        amount = parseFloat(((dur / 60) * (tariff?.hourly_rate ?? 5)).toFixed(2));
+      } else if (tariff?.max_free_hours && dur > tariff.max_free_hours * 60) {
+        const excedente = dur - tariff.max_free_hours * 60;
+        amount = parseFloat(((excedente / 60) * 5).toFixed(2));
+      }
+
+      const session = await prisma.parkingSession.create({
         data: {
-          vehicle_id: vehicleId, space_id: spaceId, user_id: sessionUsers[i],
-          entry_method: sessionMethods[i],
-          entry_time: new Date(now.getTime() - sessionHours[i] * 3600000),
-          status: 'ACTIVE',
+          session_code:     makeSessionCode(),
+          vehicle_id:       vehicles[vInfo.placa].id,
+          space_id:         space.id,
+          user_id:          vInfo.user.id,
+          entry_method:     method,
+          entry_time:       entryTime,
+          exit_time:        exitTime,
+          status:           'COMPLETED',
+          duration_minutes: dur,
+          amount_due:       amount,
+          is_paid:          true,
         },
       });
-      await prisma.parkingSpace.update({ where: { id: spaceId }, data: { status: 'OCCUPIED' } });
-      activeCreated++;
+
+      // Pago para sesiones con monto > 0
+      if (amount > 0) {
+        await prisma.payment.create({
+          data: {
+            session_id:            session.id,
+            user_id:               vInfo.user.id,
+            amount,
+            payment_method:        s % 2 === 0 ? 'CASH' : 'CARD',
+            status:                'COMPLETED',
+            transaction_reference: `TRX-${session.session_code}`,
+            paid_at:               exitTime,
+          },
+        });
+      }
+      histCreated++;
     }
   }
-  console.log(`✅ Sesiones activas: ${activeCreated} creadas`);
+  console.log(`✅ Historial: ${histCreated} sesiones (+ pagos incluidos)`);
 
-  // ─── Historial 30 días ─────────────────────────────────────────────────
-  const histCount = await prisma.parkingSession.count({ where: { status: 'COMPLETED' } });
-  if (histCount < 100) {
-    const histVehicles = [vehicleMap['P789DEF'], vehicleMap['C234JKL'], vehicleMap['M001GHI']].filter(Boolean);
-    const histUsers    = [student1Id, student2Id, student1Id];
-    const histSpaces   = await Promise.all(['A-010','B-010','A-020','C-010'].map(getSpaceId));
-    const validSpaces  = histSpaces.filter(Boolean);
-    let created = 0;
+  // ── Reservas ───────────────────────────────────────────────────────────────
+  const spA010 = spaceIds['A-010'];
+  const spA020 = spaceIds['A-020'];
+  const spD002 = spaceIds['D-002'] ?? spaceIds['D-001'];
 
-    for (let h = 1; h <= 720 && created < 720; h++) {
-      if (histVehicles.length === 0 || validSpaces.length === 0) break;
-      const vid = histVehicles[h % histVehicles.length];
-      const uid = histUsers[h % histUsers.length];
-      const sid = validSpaces[h % validSpaces.length];
-      const dur = 60 + (h % 180);
-      const entryTime = new Date(now.getTime() - h * 3600000);
-      const exitTime  = new Date(entryTime.getTime() + dur * 60000);
-      const amount    = parseFloat(((dur / 60) * 5).toFixed(2));
+  const reservationsData = [];
+  if (spA010) reservationsData.push({
+    user_id:    est001.id,
+    vehicle_id: vehicles['P-789DEF'].id,
+    space_id:   spA010.id,
+    start_time: new Date(now.getTime() + 1 * DAY + 8 * 3600000),  // mañana 8am
+    end_time:   new Date(now.getTime() + 1 * DAY + 12 * 3600000), // mañana 12pm
+    status:     'CONFIRMED',
+    type:       'STANDARD',
+    notes:      'Reserva para clase presencial',
+  });
+  if (spA020) reservationsData.push({
+    user_id:    est002.id,
+    vehicle_id: vehicles['C-234JKL'].id,
+    space_id:   spA020.id,
+    start_time: new Date(now.getTime() - 1 * DAY + 9 * 3600000),  // ayer 9am
+    end_time:   new Date(now.getTime() - 1 * DAY + 11 * 3600000), // ayer 11am
+    status:     'USED',
+    type:       'STANDARD',
+    notes:      null,
+  });
+  if (spD002) reservationsData.push({
+    user_id:    doc01.id,
+    vehicle_id: vehicles['C-456XYZ'].id,
+    space_id:   spD002.id,
+    start_time: new Date(now.getTime() + 14 * 3600000), // hoy en 14h
+    end_time:   new Date(now.getTime() + 18 * 3600000), // hoy en 18h
+    status:     'CONFIRMED',
+    type:       'PERSONAL',
+    notes:      'Reunión con decano',
+  });
 
-      await prisma.parkingSession.create({
-        data: {
-          vehicle_id: vid, space_id: sid, user_id: uid,
-          entry_time: entryTime, exit_time: exitTime,
-          entry_method: 'QR', status: 'COMPLETED',
-          duration_minutes: dur, amount_due: amount, is_paid: true,
-        },
-      });
-      created++;
-    }
-    console.log(`✅ Historial: ${created} sesiones creadas`);
-  } else {
-    console.log(`✅ Historial: ya existe (${histCount} sesiones completadas)`);
+  if (reservationsData.length) {
+    await prisma.reservation.createMany({ data: reservationsData });
   }
+  console.log(`✅ Reservas: ${reservationsData.length} creadas`);
 
-  console.log('\n🎉 Seed completado!');
-  console.log('Credenciales de prueba:');
-  console.log('  admin@uspg.edu.gt     / Admin2026!');
-  console.log('  docente01@uspg.edu.gt / Teacher2026!');
-  console.log('  est001@uspg.edu.gt    / Student2026!  (carnet: 2021-0001)');
-  console.log('  est002@uspg.edu.gt    / Student2026!  (carnet: 2021-0002)');
-  console.log('  guardia01@uspg.edu.gt / Security2026!');
+  // ── Reposición de tarjeta NFC ──────────────────────────────────────────────
+  await prisma.cardReplacement.create({
+    data: {
+      user_id:              est001.id,
+      old_nfc_token:        'NFC-EST-001-OLD',
+      new_nfc_token:        'NFC-EST-001',
+      reason:               'LOST',
+      replacement_fee:      50.00,
+      fee_paid:             false,
+      requested_at:         new Date(now.getTime() - 5 * DAY),
+      processed_by_user_id: admin.id,
+      processed_at:         new Date(now.getTime() - 5 * DAY + 2 * 3600000),
+      notes:                'Reportó pérdida en secretaría el lunes pasado',
+    },
+  });
+  console.log('✅ Reposición NFC: 1 registrada (est001, cargo Q50 pendiente)');
+
+  // ── Notificaciones ─────────────────────────────────────────────────────────
+  // Solo notificaciones que reflejan datos reales del seed (sin inventar ocupación)
+  const notificationsData = [
+    {
+      user_id: est001.id, type: 'PAYMENT_REQUIRED', is_read: false,
+      title: 'Cargo pendiente — reposición NFC',
+      message: 'Tienes un cargo de Q50.00 pendiente por reposición de tarjeta NFC.',
+    },
+    {
+      user_id: est001.id, type: 'RESERVATION_EXPIRING', is_read: false,
+      title: 'Recordatorio de reserva',
+      message: 'Tu reserva en espacio A-010 inicia mañana a las 8:00 AM.',
+    },
+    {
+      user_id: doc02.id, type: 'PAYMENT_REQUIRED', is_read: false,
+      title: 'Suscripción vencida',
+      message: 'Tu suscripción mensual venció hace 10 días. Renuévala para acceder al parqueo.',
+    },
+  ];
+  await prisma.notification.createMany({ data: notificationsData });
+  console.log(`✅ Notificaciones: ${notificationsData.length} creadas`);
+
+  // ── Audit log ─────────────────────────────────────────────────────────────
+  await prisma.auditLog.createMany({
+    data: [
+      { user_id: admin.id,  action: 'LOGIN',  resource: 'User', resource_id: admin.id  },
+      { user_id: doc01.id,  action: 'LOGIN',  resource: 'User', resource_id: doc01.id  },
+      { user_id: est001.id, action: 'LOGIN',  resource: 'User', resource_id: est001.id },
+      { user_id: admin.id,  action: 'BLACKLIST_VEHICLE', resource: 'Vehicle', resource_id: vehicles['C-678VWX'].id },
+    ],
+  });
+
+  // ── Resumen final ──────────────────────────────────────────────────────────
+  console.log('\n🎉 Seed completado exitosamente!\n');
+  console.log('═══════════════════════════════════════');
+  console.log('  CREDENCIALES DE ACCESO');
+  console.log('═══════════════════════════════════════');
+  console.log('  admin@uspg.edu.gt        / Admin2026!');
+  console.log('  docente01@uspg.edu.gt    / Teacher2026!   (NFC-DOC-001, suscripción n/a)');
+  console.log('  docente02@uspg.edu.gt    / Teacher2026!   (suscripción EXPIRADA)');
+  console.log('  est001@uspg.edu.gt       / Student2026!   (carnet 2021-0001, sub MENSUAL activa)');
+  console.log('  est002@uspg.edu.gt       / Student2026!   (carnet 2021-0002, sub SEMESTRAL activa)');
+  console.log('  est003@uspg.edu.gt       / Student2026!   (vehículo en lista negra)');
+  console.log('  guardia01@uspg.edu.gt    / Security2026!');
+  console.log('  guardia02@uspg.edu.gt    / Security2026!');
+  console.log('═══════════════════════════════════════');
+  console.log('\n  QR de prueba para escanear:');
+  console.log('  est001  → USP-QR-EST-001  (en sesión activa A-001)');
+  console.log('  est002  → USP-QR-EST-002  (en sesión activa A-002)');
+  console.log('  doc01   → USP-QR-DOC-001  (en sesión activa D-001)');
+  console.log('═══════════════════════════════════════\n');
 }
 
 main()
-  .catch(e => { console.error('❌ Error en seed:', e.message); process.exit(1); })
+  .catch(e => { console.error('\n❌ Error en seed:', e.message); console.error(e); process.exit(1); })
   .finally(() => prisma.$disconnect());

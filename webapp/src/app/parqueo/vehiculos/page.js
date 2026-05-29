@@ -49,7 +49,7 @@ function PlacaInput({ value, onChange, placeholder = "P-123ABC", className = "fo
 // ── Modal: Agregar vehículo ───────────────────────────────────────────────────
 function AddVehicleModal({ onClose, onDone }) {
   const [form, setForm] = useState({
-    placa: "", brand: "", model: "", color: "", year: "", owner_carnet: "",
+    placa: "", brand: "", model: "", color: "", year: "", owner_carnet: "", vehicle_type: "STANDARD",
   });
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState("");
@@ -101,7 +101,7 @@ function AddVehicleModal({ onClose, onDone }) {
             <h5 className="modal-title" style={{ color:"#800020" }}>
               <i className="fa fa-car" style={{ marginRight:8 }} />Agregar vehículo
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div className="row">
@@ -137,6 +137,20 @@ function AddVehicleModal({ onClose, onDone }) {
                   <label style={{ fontSize:13, fontWeight:600 }}>Año</label>
                   <input className="form-control form-control-sm" placeholder="2020" type="number"
                     value={form.year} onChange={e => set("year", e.target.value)} />
+                </div>
+              </div>
+              <div className="col-6">
+                <div className="form-group">
+                  <label style={{ fontSize:13, fontWeight:600 }}>Tipo de vehículo</label>
+                  <select className="form-control form-control-sm" value={form.vehicle_type}
+                    onChange={e => set("vehicle_type", e.target.value)}>
+                    <option value="STANDARD">Estándar</option>
+                    <option value="MOTORCYCLE">Motocicleta</option>
+                    <option value="HANDICAPPED">Discapacitado</option>
+                    <option value="ELECTRIC">Eléctrico</option>
+                    <option value="VIP">VIP</option>
+                    <option value="TEACHER">Docente</option>
+                  </select>
                 </div>
               </div>
               <div className="col-12">
@@ -192,7 +206,7 @@ function BlacklistModal({ vehicle, onClose, onDone }) {
       }
       onDone();
     } catch (e) {
-      setError(e.response?.data?.message || "Error al actualizar blacklist.");
+      setError(e.response?.data?.message || "Error al actualizar lista negra.");
     } finally {
       setLoading(false);
     }
@@ -209,9 +223,9 @@ function BlacklistModal({ vehicle, onClose, onDone }) {
           <div className="modal-header">
             <h5 className="modal-title" style={{ color: isAdding ? "#db2828" : "#21ba45" }}>
               <i className={`fa ${isAdding ? "fa-ban" : "fa-check-circle"}`} style={{ marginRight:8 }} />
-              {isAdding ? "Agregar a blacklist" : "Remover de blacklist"}
+              {isAdding ? "Agregar a lista negra" : "Remover de lista negra"}
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div style={{
@@ -228,7 +242,7 @@ function BlacklistModal({ vehicle, onClose, onDone }) {
               <div className="form-group">
                 <label style={{ fontSize:13, fontWeight:600 }}>Motivo *</label>
                 <textarea className="form-control form-control-sm" rows={3}
-                  placeholder="Describe el motivo para agregar este vehículo a la blacklist..."
+                  placeholder="Describe el motivo para agregar este vehículo a la lista negra..."
                   value={reason} onChange={e => setReason(e.target.value)} />
               </div>
             ) : (
@@ -246,7 +260,7 @@ function BlacklistModal({ vehicle, onClose, onDone }) {
               {loading
                 ? <i className="fa fa-spinner fa-spin" style={{ marginRight:6 }} />
                 : <i className={`fa ${isAdding ? "fa-ban" : "fa-check"}`} style={{ marginRight:6 }} />}
-              {isAdding ? "Agregar a blacklist" : "Remover de blacklist"}
+              {isAdding ? "Agregar a lista negra" : "Remover de lista negra"}
             </button>
             <button className="btn btn-secondary btn-sm" onClick={onClose}>Cancelar</button>
           </div>
@@ -270,7 +284,7 @@ function DetailModal({ vehicle, onClose }) {
     ["Carnet",      vehicle.user?.carnet || "—"],
     ["Rol",         vehicle.user?.role   || "—"],
     ["Autorizado",  vehicle.is_authorized ? "Sí" : "No"],
-    ["Blacklist",   vehicle.blacklisted   ? "Sí" : "No"],
+    ["Lista negra", vehicle.blacklisted   ? "Sí" : "No"],
     ["Registrado",  vehicle.created_at ? new Date(vehicle.created_at).toLocaleDateString("es-GT") : "—"],
   ];
   return (
@@ -287,11 +301,11 @@ function DetailModal({ vehicle, onClose }) {
               {vehicle.placa}
               {vehicle.blacklisted && (
                 <span className="badge badge-danger" style={{ marginLeft:8, fontSize:11 }}>
-                  <i className="fa fa-ban" style={{ marginRight:4 }} />BLACKLIST
+                  <i className="fa fa-ban" style={{ marginRight:4 }} />LISTA NEGRA
                 </span>
               )}
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <table className="table table-sm">
@@ -304,7 +318,7 @@ function DetailModal({ vehicle, onClose }) {
                 ))}
                 {vehicle.blacklist_reason && (
                   <tr>
-                    <td style={{ color:"#db2828" }}>Motivo BL</td>
+                    <td style={{ color:"#db2828" }}>Motivo</td>
                     <td style={{ color:"#db2828", fontSize:12 }}>{vehicle.blacklist_reason}</td>
                   </tr>
                 )}
@@ -404,7 +418,7 @@ export default function GestionVehiculos() {
           { label:"Total registrados", value:vehicles.length,  color:"#800020", icon:"fa-car" },
           { label:"Autorizados",       value:authCount,         color:"#21ba45", icon:"fa-check-circle" },
           { label:"No autorizados",    value:vehicles.length - authCount, color:"#fbbd08", icon:"fa-clock-o" },
-          { label:"En blacklist",      value:blCount,           color:"#db2828", icon:"fa-ban" },
+          { label:"Lista negra",        value:blCount,           color:"#db2828", icon:"fa-ban" },
         ].map(({ label, value, color, icon }) => (
           <div className="col-lg-3 col-md-6 col-sm-12" key={label}>
             <div className="card" style={{ borderLeft:`4px solid ${color}`, marginBottom:"1rem" }}>
@@ -453,9 +467,9 @@ export default function GestionVehiculos() {
 
                 <select className="form-control form-control-sm" style={{ maxWidth:140 }}
                   value={filterBL} onChange={handleFilter(setFilterBL)}>
-                  <option value="ALL">Blacklist: todos</option>
-                  <option value="YES">En blacklist</option>
-                  <option value="NO">Sin blacklist</option>
+                  <option value="ALL">Lista negra: todos</option>
+                  <option value="YES">En lista negra</option>
+                  <option value="NO">Sin lista negra</option>
                 </select>
 
                 <button className="btn btn-primary btn-sm" style={{ marginLeft:"auto" }}
@@ -497,7 +511,7 @@ export default function GestionVehiculos() {
                       <th>Vehículo</th>
                       <th>Tipo</th>
                       <th style={{ textAlign:"center" }}>Autorizado</th>
-                      <th style={{ textAlign:"center" }}>Blacklist</th>
+                      <th style={{ textAlign:"center" }}>Lista negra</th>
                       <th style={{ textAlign:"center" }}>Acciones</th>
                     </tr>
                   </thead>
@@ -570,7 +584,7 @@ export default function GestionVehiculos() {
                             {/* Blacklist */}
                             <button
                               className={`btn btn-sm ${v.blacklisted ? "btn-success" : "btn-danger"}`}
-                              title={v.blacklisted ? "Remover de blacklist" : "Agregar a blacklist"}
+                              title={v.blacklisted ? "Remover de lista negra" : "Agregar a lista negra"}
                               onClick={() => setBlTarget(v)}>
                               <i className={`fa ${v.blacklisted ? "fa-check-circle" : "fa-ban"}`} />
                             </button>
@@ -588,7 +602,7 @@ export default function GestionVehiculos() {
                   Mostrando {(page - 1) * PER_PAGE + 1}–{Math.min(page * PER_PAGE, filtered.length)} de {filtered.length} vehículos
                   {blCount > 0 && (
                     <span style={{ color:"#db2828", marginLeft:8 }}>
-                      <i className="fa fa-ban" style={{ marginRight:4 }} />{blCount} en blacklist
+                      <i className="fa fa-ban" style={{ marginRight:4 }} />{blCount} en lista negra
                     </span>
                   )}
                 </span>

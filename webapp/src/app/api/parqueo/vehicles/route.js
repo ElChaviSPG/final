@@ -18,7 +18,12 @@ export async function GET(request) {
       prisma.vehicle.count({ where }),
       prisma.vehicle.findMany({
         where, skip: (page - 1) * limit, take: limit,
-        include: { user: { select: { id: true, first_name: true, last_name: true, email: true, role: true } } },
+        include: {
+          user: { select: { id: true, first_name: true, last_name: true, email: true, role: true, carnet: true } },
+          blacklist_entries: blacklisted === 'true'
+            ? { where: { is_active: true }, select: { created_at: true }, take: 1, orderBy: { created_at: 'desc' } }
+            : false,
+        },
         orderBy: { created_at: 'desc' },
       }),
     ]);
@@ -41,10 +46,7 @@ export async function POST(request) {
       const owner = await prisma.user.findFirst({ where: { carnet: dto.owner_carnet, deleted_at: null } });
       if (owner) userId = owner.id;
     }
-    if (!userId) {
-      const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' }, select: { id: true } });
-      userId = admin?.id;
-    }
+    if (!userId) return res.error('No se encontró el propietario. Verifica el carnet o inicia sesión.', 422);
 
     const { owner_carnet, type, ...rest } = dto;
     const vehicle = await prisma.vehicle.create({ data: { ...rest, placa, user_id: userId } });

@@ -7,8 +7,8 @@ import CampusMapPicker from "@/components/parqueo/CampusMapPicker";
 function getParqueoLabel(zone, space_code) {
   if (!zone || !space_code) return zone ? `Zona ${zone}` : "—";
   const num = parseInt(space_code.replace(/[^0-9]/g, ""), 10) || 0;
-  if (zone === "A") return num <= 125 ? "Zona A · Norte" : "Zona A · Oeste";
-  if (zone === "B") return num <= 125 ? "Zona B · Sur"  : "Zona B · Este";
+  if (zone === "A") return num <= 62 ? "Zona A · Norte" : "Zona A · Oeste";
+  if (zone === "B") return num <= 62 ? "Zona B · Sur"  : "Zona B · Este";
   return `Zona ${zone}`;
 }
 
@@ -131,7 +131,7 @@ function NewReservaModal({ onClose, onDone }) {
     const load = async () => {
       try {
         const [spacesRes, statusRes] = await Promise.all([
-          api.get("/spaces?status=AVAILABLE&limit=600"),
+          api.get("/spaces?limit=600"),
           api.get("/spaces/status"),
         ]);
         const all = spacesRes.data.data || [];
@@ -216,7 +216,7 @@ function NewReservaModal({ onClose, onDone }) {
               <i className="fa fa-calendar-plus-o" style={{ marginRight:8 }} />
               Nueva reserva
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
 
           <div className="modal-body" style={{ padding:"1rem" }}>
@@ -373,7 +373,7 @@ function SendQRModal({ reservation, onClose, onSent }) {
               <i className="fa fa-qrcode" style={{ marginRight:8 }} />
               Enviar QR por correo
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             {success ? (
@@ -469,7 +469,7 @@ function CancelModal({ reservation, onClose, onDone }) {
               <i className="fa fa-times-circle" style={{ marginRight:8 }} />
               Cancelar reserva
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             <div style={{
@@ -566,7 +566,7 @@ function SendBatchModal({ reservations, onClose }) {
               <i className="fa fa-paper-plane" style={{ marginRight:8 }} />
               Enviar {reservations.length} QR{reservations.length > 1 ? "s" : ""} por correo
             </h5>
-            <button className="close" onClick={onClose}><span>&times;</span></button>
+            <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={onClose}><span>&times;</span></button>
           </div>
           <div className="modal-body">
             {success ? (
@@ -1011,7 +1011,7 @@ export default function Reservas() {
                   <i className="fa fa-trash" style={{ marginRight:8 }} />
                   Cancelar {selected.size} reserva{selected.size > 1 ? "s" : ""}
                 </h5>
-                <button className="close" onClick={() => setShowBatchCancel(false)} disabled={batchCancelling}>
+                <button style={{ border:"none", background:"none", fontSize:22, cursor:"pointer", color:"#888", lineHeight:1, padding:"0 0 0 12px", fontWeight:300 }} onClick={() => setShowBatchCancel(false)} disabled={batchCancelling}>
                   <span>&times;</span>
                 </button>
               </div>

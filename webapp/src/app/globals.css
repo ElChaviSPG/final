@@ -263,3 +263,13 @@ body:not(.dark-mode) .dashboard-card .module-title {
 .login-container * {
   box-sizing: border-box;
 }
+
+/* ── Fix doble X en modales ──────────────────────────────────────────────────
+   AdminLTE posiciona button.close con position:absolute dentro de .modal,
+   haciendo que aparezca DOS veces: en su posición DOM y flotando en la esquina.
+   Forzamos position:static para que cada botón quede donde el layout lo pone. */
+.modal button.close {
+  position: static !important;
+  top: auto !important;
+  right: auto !important;
+}
