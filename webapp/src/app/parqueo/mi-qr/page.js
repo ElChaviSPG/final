@@ -23,7 +23,7 @@ export default function MiQrPage() {
     if (!token) { setError("Sesión no iniciada"); setLoading(false); return; }
     const decoded = decodeJwt(token);
     if (!decoded?.sub) { setError("Token inválido"); setLoading(false); return; }
-    api.get(`/users/${decoded.sub}`)
+    api.get(`/auth`)
       .then(r => setUser(r.data.data))
       .catch(() => setError("No se pudo cargar el usuario"))
       .finally(() => setLoading(false));
