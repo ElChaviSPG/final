@@ -1,16 +1,15 @@
-export default function Laboratorios() {
+import { getDashboardData, getUsuariosSelect } from './actions'
+import { serialize } from '@/lib/serialize'
+import LaboratoriosDashboard from './LaboratoriosDashboard'
+
+export const dynamic = 'force-dynamic'
+
+export default async function LaboratoriosPage() {
+  const [data, usuarios] = await Promise.all([getDashboardData(), getUsuariosSelect()])
+
   return (
-    <div className="row clearfix">
-      <div className="col-lg-12">
-        <div className="card">
-          <div className="card-header">
-            <h3 className="card-title">Laboratorios</h3>
-          </div>
-          <div className="card-body">
-            <p>Módulo en construcción...</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+    <LaboratoriosDashboard
+      initialData={serialize({ ...data, usuarios })}
+    />
+  )
 }
