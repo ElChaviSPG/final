@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import { signAccess, signRefresh, verifyRefresh, getUserFromRequest } from '@/lib/jwt';
 import * as res from '@/lib/response';

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import prisma from '@/lib/prisma';
 import * as res from '@/lib/response';
 import { anclarAudit } from '@/lib/blockchain';

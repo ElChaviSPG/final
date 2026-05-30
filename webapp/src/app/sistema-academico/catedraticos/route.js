@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { PrismaClient } from "@prisma/client";
 import { enviarCorreoBienvenidaConQR } from "@/lib/email";
 

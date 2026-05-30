@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { enviarCorreoBienvenidaConQR } from "@/lib/email";
 import prisma from "@/lib/prisma";
 import bcrypt from "bcryptjs";
