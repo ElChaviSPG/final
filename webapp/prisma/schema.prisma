@@ -469,6 +469,7 @@ model Horario {
   horaInicio    String
   horaFin       String
   salon         String
+  esAsincrono   Boolean  @default(false) @map("es_asincrono")
   createdAt     DateTime @default(now()) @map("created_at")
 
   curso       Curso                @relation(fields: [cursoId], references: [id])

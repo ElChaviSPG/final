@@ -1,5 +1,12 @@
 import { enviarCorreoBienvenidaConQR } from "@/lib/email";
 import prisma from "@/lib/prisma";
+import bcrypt from "bcryptjs";
+
+/** Generates a random 8-character password */
+function generarPasswordTemporal() {
+  const chars = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+}
 
 /**
  * Normalizes a string: lowercase, remove accents, remove non-alphanumeric.
@@ -126,6 +133,10 @@ export async function POST(request) {
       ? await generarCorreoInstitucional(nombre, apellido)
       : null;
 
+    // Generate and hash a temporary password for new students
+    const passwordTemporal = autoCarnet ? generarPasswordTemporal() : null;
+    const passwordHash = passwordTemporal ? await bcrypt.hash(passwordTemporal, 10) : null;
+
     const alumno = await prisma.alumno.create({
       data: {
         carnet,
@@ -133,17 +144,19 @@ export async function POST(request) {
         apellido,
         email,
         correoInstitucional,
+        password: passwordHash,
         carreraId: carreraId ?? null,
       },
     });
 
-    // Send welcome email with QR and institutional email info (non-blocking)
+    // Send welcome email with QR, institutional email, and temporary password
     enviarCorreoBienvenidaConQR({
       nombre:              alumno.nombre,
       apellido:            alumno.apellido,
       email:               alumno.email,
       carnet:              alumno.carnet,
       correoInstitucional: alumno.correoInstitucional,
+      passwordTemporal,
     }).catch((err) => {
       console.error("[email] Error enviando correo de bienvenida:", err.message);
     });
