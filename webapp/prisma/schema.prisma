@@ -1,10 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
+  schemas    = ["grupo5_parqueo"]
 }
 
 enum Role {
@@ -13,6 +15,8 @@ enum Role {
   TEACHER
   STUDENT
   VISITOR
+
+  @@schema("grupo5_parqueo")
 }
 
 enum Zone {
@@ -20,6 +24,8 @@ enum Zone {
   B
   C
   D
+
+  @@schema("grupo5_parqueo")
 }
 
 enum SpaceType {
@@ -29,6 +35,8 @@ enum SpaceType {
   ELECTRIC
   RESERVED
   TEACHER
+
+  @@schema("grupo5_parqueo")
 }
 
 enum SpaceStatus {
@@ -36,12 +44,16 @@ enum SpaceStatus {
   OCCUPIED
   RESERVED
   MAINTENANCE
+
+  @@schema("grupo5_parqueo")
 }
 
 enum SessionStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+
+  @@schema("grupo5_parqueo")
 }
 
 enum PaymentStatus {
@@ -49,6 +61,8 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+
+  @@schema("grupo5_parqueo")
 }
 
 enum PaymentMethod {
@@ -57,6 +71,8 @@ enum PaymentMethod {
   TRANSFER
   QR_CODE
   MOBILE
+
+  @@schema("grupo5_parqueo")
 }
 
 enum EntryMethod {
@@ -65,6 +81,8 @@ enum EntryMethod {
   NFC
   MANUAL
   VISITOR_QR
+
+  @@schema("grupo5_parqueo")
 }
 
 enum ReservationStatus {
@@ -73,6 +91,8 @@ enum ReservationStatus {
   CANCELLED
   EXPIRED
   USED
+
+  @@schema("grupo5_parqueo")
 }
 
 enum ReservationType {
@@ -80,6 +100,8 @@ enum ReservationType {
   PERSONAL
   EVENT
   SPECIAL_VISIT
+
+  @@schema("grupo5_parqueo")
 }
 
 enum NotificationType {
@@ -93,6 +115,8 @@ enum NotificationType {
   SYSTEM_ALERT
   BLACKLIST
   INFO
+
+  @@schema("grupo5_parqueo")
 }
 
 enum BarrierAction {
@@ -100,6 +124,8 @@ enum BarrierAction {
   CLOSE
   BLOCK
   ERROR
+
+  @@schema("grupo5_parqueo")
 }
 
 enum TriggerSource {
@@ -109,12 +135,16 @@ enum TriggerSource {
   MANUAL
   SYSTEM
   PAYMENT
+
+  @@schema("grupo5_parqueo")
 }
 
 enum Orientation {
   HORIZONTAL
   DIAGONAL
   VERTICAL
+
+  @@schema("grupo5_parqueo")
 }
 
 model Campus {
@@ -131,6 +161,8 @@ model Campus {
 
   spaces  ParkingSpace[]
   cameras Camera[]
+
+  @@schema("grupo5_parqueo")
 }
 
 model User {
@@ -168,6 +200,8 @@ model User {
 
   @@index([email])
   @@index([role])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Vehicle {
@@ -194,6 +228,8 @@ model Vehicle {
   @@index([placa])
   @@index([user_id])
   @@index([blacklisted])
+
+  @@schema("grupo5_parqueo")
 }
 
 model ParkingSpace {
@@ -218,6 +254,8 @@ model ParkingSpace {
   @@index([status])
   @@index([zone])
   @@index([campus_id])
+
+  @@schema("grupo5_parqueo")
 }
 
 model ParkingSession {
@@ -250,6 +288,8 @@ model ParkingSession {
   @@index([vehicle_id])
   @@index([entry_time])
   @@index([session_code])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Payment {
@@ -266,6 +306,8 @@ model Payment {
 
   session ParkingSession @relation(fields: [session_id], references: [id])
   user    User           @relation(fields: [user_id], references: [id])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Reservation {
@@ -288,6 +330,8 @@ model Reservation {
   @@index([status])
   @@index([user_id])
   @@index([start_time])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Notification {
@@ -305,6 +349,8 @@ model Notification {
 
   @@index([user_id])
   @@index([is_read])
+
+  @@schema("grupo5_parqueo")
 }
 
 model AuditLog {
@@ -323,6 +369,8 @@ model AuditLog {
   @@index([user_id])
   @@index([action])
   @@index([created_at])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Blacklist {
@@ -341,6 +389,8 @@ model Blacklist {
 
   @@index([is_active])
   @@index([vehicle_id])
+
+  @@schema("grupo5_parqueo")
 }
 
 model BarrierLog {
@@ -357,6 +407,8 @@ model BarrierLog {
 
   @@index([barrier_id])
   @@index([created_at])
+
+  @@schema("grupo5_parqueo")
 }
 
 model VisitorQR {
@@ -377,6 +429,8 @@ model VisitorQR {
 
   @@index([qr_code])
   @@index([expires_at])
+
+  @@schema("grupo5_parqueo")
 }
 
 model Camera {
@@ -393,6 +447,8 @@ model Camera {
   updated_at DateTime @updatedAt
 
   campus Campus? @relation(fields: [campus_id], references: [id])
+
+  @@schema("grupo5_parqueo")
 }
 
 // ── TariffConfig — tarifas editables por rol ─────────────────────────────────
@@ -405,6 +461,8 @@ model TariffConfig {
   max_free_hours       Int?
   updated_at           DateTime @updatedAt
   updated_by_user_id   String?
+
+  @@schema("grupo5_parqueo")
 }
 
 // ── Nuevos modelos — Tarea 1 ──────────────────────────────────────────────────
@@ -416,12 +474,16 @@ enum VehicleType {
   ELECTRIC
   VIP
   TEACHER
+
+  @@schema("grupo5_parqueo")
 }
 
 enum SubscriptionType {
   MONTHLY
   TRIMESTRAL
   SEMESTER
+
+  @@schema("grupo5_parqueo")
 }
 
 enum SubscriptionStatus {
@@ -429,11 +491,15 @@ enum SubscriptionStatus {
   EXPIRED
   CANCELLED
   PENDING
+
+  @@schema("grupo5_parqueo")
 }
 
 enum TariffMode {
   HOURLY
   FLAT_RATE
+
+  @@schema("grupo5_parqueo")
 }
 
 enum EventStatus {
@@ -441,6 +507,8 @@ enum EventStatus {
   ACTIVE
   COMPLETED
   CANCELLED
+
+  @@schema("grupo5_parqueo")
 }
 
 enum BillStatus {
@@ -448,6 +516,8 @@ enum BillStatus {
   CLOSED
   PAID
   OVERDUE
+
+  @@schema("grupo5_parqueo")
 }
 
 enum ReplacementReason {
@@ -455,6 +525,8 @@ enum ReplacementReason {
   DAMAGED
   STOLEN
   REASSIGNMENT
+
+  @@schema("grupo5_parqueo")
 }
 
 model ParkingSubscription {
@@ -475,6 +547,8 @@ model ParkingSubscription {
   @@index([user_id])
   @@index([status])
   @@index([end_date])
+
+  @@schema("grupo5_parqueo")
 }
 
 model ParkingEvent {
@@ -501,6 +575,8 @@ model ParkingEvent {
 
   @@index([event_date])
   @@index([status])
+
+  @@schema("grupo5_parqueo")
 }
 
 model MonthlyBill {
@@ -524,6 +600,8 @@ model MonthlyBill {
   @@index([user_id])
   @@index([month, year])
   @@index([status])
+
+  @@schema("grupo5_parqueo")
 }
 
 model CardReplacement {
@@ -542,6 +620,8 @@ model CardReplacement {
 
   user         User  @relation("CardUser", fields: [user_id], references: [id])
   processed_by User? @relation("CardProcessor", fields: [processed_by_user_id], references: [id])
+
+  @@schema("grupo5_parqueo")
 }
 
 model BlockchainAudit {
@@ -559,4 +639,6 @@ model BlockchainAudit {
   @@index([session_id])
   @@index([created_at])
   @@index([status])
+
+  @@schema("grupo5_parqueo")
 }
