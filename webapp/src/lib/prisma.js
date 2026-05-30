@@ -1,19 +1,25 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis;
 
-function getClient() {
-  if (!globalForPrisma._prismaClient) {
-    globalForPrisma._prismaClient = new PrismaClient();
+function createClient() {
+  const url = process.env.DATABASE_URL5 ?? process.env.DATABASE_URL;
+  if (url) {
+    const adapter = new PrismaPg({ connectionString: url });
+    return new PrismaClient({ adapter });
   }
-  return globalForPrisma._prismaClient;
+  return new PrismaClient();
 }
 
 const prisma = new Proxy(
   {},
   {
     get(_, prop) {
-      const client = getClient();
+      if (!globalForPrisma._prismaClient) {
+        globalForPrisma._prismaClient = createClient();
+      }
+      const client = globalForPrisma._prismaClient;
       const value = client[prop];
       return typeof value === 'function' ? value.bind(client) : value;
     },
