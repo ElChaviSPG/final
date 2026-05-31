@@ -11,6 +11,7 @@ function createClient() {
       connectionString: url,
       ssl: { rejectUnauthorized: false },
       options: '-c search_path=grupo1_academico',
+      max: 2,
     });
     const adapter = new PrismaPg(pool);
     return new PrismaClient({ adapter });
