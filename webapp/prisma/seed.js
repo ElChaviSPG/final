@@ -2,10 +2,30 @@
 // Ejecutar: npm run seed
 // Limpia toda la BD y crea datos frescos y coherentes.
 
+import { config } from 'dotenv';
+config({ path: '.env.local' });
+
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import bcrypt from 'bcryptjs';
 
-const prisma = new PrismaClient();
+const pool = new pg.Pool({
+  connectionString: (process.env.DATABASE_URL5 ?? process.env.DATABASE_URL).replace('sslmode=require', 'sslmode=no-verify'),
+  ssl: { rejectUnauthorized: false },
+  options: '-c search_path=grupo5_parqueo',
+});
+const adapter = new PrismaPg(pool);
+
+// ── Cliente académico ───────────────────────────────────────────────────────
+const poolAcademico = new pg.Pool({
+  connectionString: process.env.DATABASE_URL.replace('sslmode=require', 'sslmode=no-verify'),
+  ssl: { rejectUnauthorized: false },
+  options: '-c search_path=grupo1_academico',
+});
+const adapterAcademico = new PrismaPg(poolAcademico);
+const prismaAcademico = new PrismaClient({ adapter: adapterAcademico });
+const prisma = new PrismaClient({ adapter });
 
 // ── Generador de session_code único ────────────────────────────────────────────
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -505,6 +525,80 @@ async function main() {
   console.log('═══════════════════════════════════════\n');
 }
 
+async function seedAcademico() {
+  console.log('\n📚 Seeding sistema académico...');
+
+  const q = (text, values) => poolAcademico.query(text, values);
+
+  // Wipe en orden FK-safe
+  await q(`SET search_path TO grupo1_academico`);
+  await q(`TRUNCATE "CursoPlan","PlanEstudio","SolicitudInscripcion","Asistencia","Asignacion","Horario","Alumno","CatedraticoAcademico","Curso","Carrera" RESTART IDENTITY CASCADE`);
+
+  // Carreras
+  const { rows: [ing] } = await q(`INSERT INTO "Carrera"(codigo,nombre,facultad,nivel) VALUES('ING-SIS','Ingeniería en Sistemas','Ingeniería','LICENCIATURA') RETURNING id`);
+  const { rows: [adm] } = await q(`INSERT INTO "Carrera"(codigo,nombre,facultad,nivel) VALUES('ADM-EMP','Administración de Empresas','Ciencias Económicas','LICENCIATURA') RETURNING id`);
+  const { rows: [der] } = await q(`INSERT INTO "Carrera"(codigo,nombre,facultad,nivel) VALUES('DER-GEN','Derecho','Ciencias Jurídicas','LICENCIATURA') RETURNING id`);
+  console.log('  ✅ Carreras: 3');
+
+  // Catedráticos
+  const { rows: [cat1] } = await q(`INSERT INTO "CatedraticoAcademico"(codigo,nombre,apellido,email) VALUES('CAT-001','Roberto','Méndez','rmendez@uspg.edu.gt') RETURNING id`);
+  const { rows: [cat2] } = await q(`INSERT INTO "CatedraticoAcademico"(codigo,nombre,apellido,email) VALUES('CAT-002','María','González','mgonzalez@uspg.edu.gt') RETURNING id`);
+  const { rows: [cat3] } = await q(`INSERT INTO "CatedraticoAcademico"(codigo,nombre,apellido,email) VALUES('CAT-003','Carlos','Pérez','cperez@uspg.edu.gt') RETURNING id`);
+  console.log('  ✅ Catedráticos: 3');
+
+  // Cursos
+  const { rows: [prog1]  } = await q(`INSERT INTO "Curso"(codigo,nombre,creditos) VALUES('SIS-101','Programación I',4) RETURNING id`);
+  const { rows: [prog2]  } = await q(`INSERT INTO "Curso"(codigo,nombre,creditos) VALUES('SIS-201','Programación II',4) RETURNING id`);
+  const { rows: [bd]     } = await q(`INSERT INTO "Curso"(codigo,nombre,creditos) VALUES('SIS-301','Bases de Datos',5) RETURNING id`);
+  const { rows: [redes]  } = await q(`INSERT INTO "Curso"(codigo,nombre,creditos) VALUES('SIS-401','Redes de Computadoras',4) RETURNING id`);
+  const { rows: [contab] } = await q(`INSERT INTO "Curso"(codigo,nombre,creditos) VALUES('ADM-101','Contabilidad I',4) RETURNING id`);
+  console.log('  ✅ Cursos: 5');
+
+  // Horarios
+  const { rows: [h1] } = await q(`INSERT INTO "Horario"("cursoId","catedraticoId",dia,"horaInicio","horaFin",salon) VALUES($1,$2,'LUNES','08:00','10:00','A-101') RETURNING id`, [prog1.id, cat1.id]);
+  const { rows: [h3] } = await q(`INSERT INTO "Horario"("cursoId","catedraticoId",dia,"horaInicio","horaFin",salon) VALUES($1,$2,'MIERCOLES','10:00','12:00','B-201') RETURNING id`, [bd.id, cat2.id]);
+  await q(`INSERT INTO "Horario"("cursoId","catedraticoId",dia,"horaInicio","horaFin",salon) VALUES($1,$2,'MARTES','08:00','10:00','A-101')`, [prog2.id, cat1.id]);
+  await q(`INSERT INTO "Horario"("cursoId","catedraticoId",dia,"horaInicio","horaFin",salon) VALUES($1,$2,'JUEVES','14:00','16:00','C-301')`, [redes.id, cat3.id]);
+  console.log('  ✅ Horarios: 4');
+
+  // Alumnos
+  const { rows: [al1] } = await q(`INSERT INTO "Alumno"(carnet,nombre,apellido,email,password,"carreraId") VALUES('2600001','Ana','López','alopez@alumno.uspg.edu.gt','USPG-2600001',$1) RETURNING id`, [ing.id]);
+  const { rows: [al2] } = await q(`INSERT INTO "Alumno"(carnet,nombre,apellido,email,password,"carreraId") VALUES('2600002','Pedro','Ramírez','pramirez@alumno.uspg.edu.gt','USPG-2600002',$1) RETURNING id`, [ing.id]);
+  const { rows: [al3] } = await q(`INSERT INTO "Alumno"(carnet,nombre,apellido,email,password,"carreraId") VALUES('2600003','Sofía','Castro','scastro@alumno.uspg.edu.gt','USPG-2600003',$1) RETURNING id`, [adm.id]);
+  console.log('  ✅ Alumnos: 3');
+
+  // Asignaciones
+  await q(`INSERT INTO "Asignacion"("alumnoId","cursoId",ciclo) VALUES($1,$2,'2026-1'),($1,$3,'2026-1'),($4,$2,'2026-1'),($4,$5,'2026-1'),($6,$7,'2026-1')`,
+    [al1.id, prog1.id, bd.id, al2.id, redes.id, al3.id, contab.id]);
+  console.log('  ✅ Asignaciones: 5');
+
+  // Asistencias
+  await q(`INSERT INTO "Asistencia"("alumnoId","horarioId",fecha,presente) VALUES($1,$2,'2026-05-31',true),($3,$2,'2026-05-31',true),($1,$4,'2026-05-31',false)`,
+    [al1.id, h1.id, al2.id, h3.id]);
+  console.log('  ✅ Asistencias: 3');
+
+  // Solicitudes
+  await q(`INSERT INTO "SolicitudInscripcion"(nombre,apellido,email,telefono,"carreraId",estado) VALUES('Luis','Morales','lmorales@gmail.com','55551234',$1,'PENDIENTE'),('Diana','Flores','dflores@gmail.com','55555678',$2,'PENDIENTE')`,
+    [ing.id, der.id]);
+  console.log('  ✅ Solicitudes: 2');
+
+  // Plan de estudio
+  const { rows: [plan] } = await q(`INSERT INTO "PlanEstudio"("carreraId",nombre,version,"totalCreditos") VALUES($1,'Plan 2024','2024',200) RETURNING id`, [ing.id]);
+  await q(`INSERT INTO "CursoPlan"("planEstudioId","cursoId",semestre,obligatorio) VALUES($1,$2,1,true),($1,$3,2,true),($1,$4,3,true),($1,$5,4,true)`,
+    [plan.id, prog1.id, prog2.id, bd.id, redes.id]);
+  console.log('  ✅ Plan de estudio: 1 plan, 4 cursos');
+
+  console.log('\n📚 Seed académico completado!');
+  console.log('═══════════════════════════════════════');
+  console.log('  ALUMNOS DE PRUEBA');
+  console.log('═══════════════════════════════════════');
+  console.log('  carnet: 2600001  / pass: USPG-2600001  (Ing. Sistemas)');
+  console.log('  carnet: 2600002  / pass: USPG-2600002  (Ing. Sistemas)');
+  console.log('  carnet: 2600003  / pass: USPG-2600003  (Administración)');
+  console.log('═══════════════════════════════════════\n');
+}
+
 main()
+  .then(() => seedAcademico())
   .catch(e => { console.error('\n❌ Error en seed:', e.message); console.error(e); process.exit(1); })
-  .finally(() => prisma.$disconnect());
+  .finally(async () => { await prisma.$disconnect(); await prismaAcademico.$disconnect(); });

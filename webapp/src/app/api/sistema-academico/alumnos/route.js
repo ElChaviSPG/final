@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { enviarCorreoBienvenidaConQR } from "@/lib/email";
-import prisma from "@/lib/prisma";
+import prisma from "@/lib/prisma-academico";
 import bcrypt from "bcryptjs";
 
 /** Generates a random 8-character password */
