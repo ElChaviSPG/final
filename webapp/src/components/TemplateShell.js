@@ -2,23 +2,15 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
+import { getMenuForRole } from "@/lib/navigation/menu";
 
-const menuItems = [
-  { name: "Dashboard",                      path: "/",                              icon: "fa-dashboard" },
-  { name: "Sistema Académico",              path: "/sistema-academico",             icon: "fa-graduation-cap" },
-  { name: "Control de Notas",               path: "/control-de-notas",              icon: "fa-file-text-o" },
-  { name: "Laboratorios",                   path: "/laboratorios",                  icon: "fa-flask" },
-  { name: "Biblioteca",                     path: "/biblioteca",                    icon: "fa-book" },
-  { name: "Parqueo",                        path: "/parqueo",                       icon: "fa-car" },
-  { name: "Pagos Alumnos",                  path: "/pagos-alumnos",                 icon: "fa-money" },
-  { name: "Servicios Móviles e Integrador", path: "/servicios-moviles-integrador",  icon: "fa-mobile" },
-  { name: "Administración",                 path: "/administracion",                icon: "fa-cogs" },
-];
 
 export default function TemplateShell({ children }) {
   const pathname = usePathname();
   const router = useRouter();
   const [isDark, setIsDark] = useState(true);
+  const [nombreUsuario, setNombreUsuario] = useState("");
+  const [menuItems, setMenuItems] = useState([]);
 
   useEffect(() => {
     if (isDark) {
@@ -28,10 +20,45 @@ export default function TemplateShell({ children }) {
     }
   }, [isDark]);
 
+  useEffect(() => {
+    try {
+      let nombre = "";
+      let role = null;
+
+      // 1. Leer objeto user (guardado en login, tiene nombre/apellido/role)
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        const u = JSON.parse(userStr);
+        nombre = [u.nombre, u.apellido].filter(Boolean).join(" ").trim() || u.email || "";
+        role = u.role || null;
+      }
+
+      // 2. JWT como fuente de verdad para el rol (firmado por el servidor)
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        try {
+          const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          const payload = JSON.parse(decodeURIComponent(atob(base64).split("").map(c => "%" + c.charCodeAt(0).toString(16).padStart(2, "0")).join("")));
+          role = payload.role || role;
+          if (!nombre) {
+            nombre = payload.name || payload.nombre || payload.sub || "";
+          }
+        } catch (_) {}
+      }
+
+      setNombreUsuario(nombre);
+      setMenuItems(getMenuForRole(role));
+    } catch (_) {}
+  }, [pathname]); // re-corre en cada navegación (captura el token post-login)
+
   const toggleTheme = () => setIsDark(!isDark);
 
   const handleLogout = () => {
-    document.cookie = "auth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    document.cookie = "access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    document.cookie = "refresh_token=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;";
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
     router.push("/login");
   };
 
@@ -45,12 +72,12 @@ export default function TemplateShell({ children }) {
   return (
     <>
       {/* ── left-sidebar: solo logo + módulos ── */}
-      <div id="left-sidebar" className="sidebar" style={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        height: '100vh', 
-        left: 0, 
-        position: 'fixed' 
+      <div id="left-sidebar" className="sidebar" style={{
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100vh',
+        left: 0,
+        position: 'fixed'
       }}>
         <div className="brand-name" style={{ textAlign: 'center', padding: '10px 15px' }}>
           <img src="/logou.png" alt="USPG" style={{ maxWidth: '182px', height: 'auto' }} />
@@ -76,18 +103,18 @@ export default function TemplateShell({ children }) {
             </nav>
           </div>
         </div>
-        
+
         {/* Logout Button at the very bottom */}
-        <div style={{ 
-          padding: '15px 20px', 
+        <div style={{
+          padding: '15px 20px',
           borderTop: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)',
           background: 'transparent'
         }}>
-          <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }} 
-             style={{ 
-               display: 'flex', 
-               alignItems: 'center', 
-               gap: '12px', 
+          <a href="#" onClick={(e) => { e.preventDefault(); handleLogout(); }}
+             style={{
+               display: 'flex',
+               alignItems: 'center',
+               gap: '12px',
                color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.7)',
                textDecoration: 'none',
                fontSize: '14px',
@@ -124,23 +151,30 @@ export default function TemplateShell({ children }) {
             <div onClick={toggleTheme} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
               <i className="fa fa-adjust" style={{ color: isDark ? '#fff' : '#333', fontSize: '18px' }}></i>
             </div>
-            
+
             <i className="fa fa-bell-o" style={{ color: isDark ? '#aaa' : '#555', fontSize: '16px', cursor: 'pointer' }}></i>
-            
-            <div style={{
-              width: '34px',
-              height: '34px',
-              borderRadius: '50%',
-              background: '#800020',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#fff',
-              fontWeight: 700,
-              fontSize: '14px',
-              cursor: 'pointer',
-            }}>
-              <i className="fa fa-user" style={{ fontSize: '16px' }}></i>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {nombreUsuario && (
+                <span style={{ color: isDark ? 'rgba(255,255,255,0.85)' : 'rgba(0,0,0,0.75)', fontSize: '14px', fontWeight: 500 }}>
+                  {nombreUsuario}
+                </span>
+              )}
+              <div style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '50%',
+                background: '#800020',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: '14px',
+                cursor: 'pointer',
+              }}>
+                <i className="fa fa-user" style={{ fontSize: '16px' }}></i>
+              </div>
             </div>
           </div>
         </div>
